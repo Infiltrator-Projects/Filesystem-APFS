@@ -1,3 +1,3 @@
-# APFS migration — 2026-10-30
+# APFS migration
 
-This is the original APFS Defragmenter native engine imported without algorithm changes from Infiltrator-Projects/Defragmenter commit 30af892d8897d3aeaeefeac1bfcdb9620a0a5c72. File paths are preserved under `migration/defragmenter/native/` until dependencies on Defragmenter's host services are extracted. This migration snapshot is NOT a working standalone `APFS.so` and does not qualify Linux kernel/BOOT integration. Original Defragmenter files remain active unchanged. Promote as the authoritative engine only after source reconciliation, Common ABI wrapper and independent fixture/real-media testing.
+The original APFS parser, checkpoint/spaceman/catalog engine, writable Defrag/Recover worker and deterministic Test Media formatter and verifier now compile into the independent APFS.so. The application must use only versioned host service and corpus callbacks, not local filesystem algorithms. Standalone tests and end-to-end Defragmenter integration must pass before qualification. Firmware and KO drivers are separate requirements.
