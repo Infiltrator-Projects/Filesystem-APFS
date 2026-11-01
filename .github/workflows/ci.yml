@@ -18,3 +18,18 @@ jobs:
         with:
           name: APFS-so
           path: build/APFS.so
+
+      - name: Verify exactly one PDF per runtime SO
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$(mktemp -d)"
+          trap 'rm -rf "$stage"' EXIT
+          DESTDIR="$stage" cmake --install build
+          actual="$(cd "$stage" && find . -type f -printf '%P\\n' | LC_ALL=C sort)"
+          expected="$(printf '%s\\n' 'System/Filesystems/APFS.so' 'System/Resources/Documentation/Filesystem-APFS/APFS.pdf' | LC_ALL=C sort)"
+          if [[ "$actual" != "$expected" ]]; then
+            printf 'Incorrect installed payload:\\n%s\\n' "$actual"
+            exit 1
+          fi
+          test "$(head -c 5 "$stage/System/Resources/Documentation/Filesystem-APFS/APFS.pdf")" = '%PDF-'
