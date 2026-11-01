@@ -31,3 +31,6 @@ if(BUILD_TESTING)
     add_test(NAME apfs-original-native COMMAND apfs-original-native-test)
 endif()
 install(TARGETS apfs-driver LIBRARY DESTINATION /System/Filesystems)
+# Install only this filesystem's illustrated PDF beside its native shared object.
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/docs/APFS.pdf"
+        DESTINATION /System/Resources/Documentation/Filesystem-APFS)
