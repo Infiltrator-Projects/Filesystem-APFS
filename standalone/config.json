@@ -1,0 +1,7 @@
+{
+  "repository": "Filesystem-APFS",
+  "module": "APFS.so",
+  "pdf": "docs/APFS.pdf",
+  "abi": "infiltrator_filesystem_apfs_v1",
+  "build_system": "cmake"
+}
