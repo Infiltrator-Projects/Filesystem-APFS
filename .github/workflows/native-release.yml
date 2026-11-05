@@ -69,7 +69,7 @@ jobs:
           tar -xzf "$RUNNER_TEMP/linux.tar.gz" -C "$RUNNER_TEMP/linux" --strip-components=1
           kernel="$RUNNER_TEMP/linux"
           make -C "$kernel" defconfig
-          "$kernel/scripts/config" --file "$kernel/.config" --enable MODULES --disable WERROR --disable DEBUG_INFO
+          "$kernel/scripts/config" --file "$kernel/.config" --enable MODULES --enable LIBCRC32C --disable WERROR --disable DEBUG_INFO
           make -C "$kernel" olddefconfig
           make -C "$kernel" -j2 bzImage modules
           test -s "$kernel/Module.symvers"
