@@ -147,10 +147,15 @@ static int native_unmount(void *handle)
     return IFS_FS_OK;
 }
 
+static int volume_query(void *handle, IfsFsVolumeInfoV2 *info)
+{
+    return volume_fill((const MountedApfs *)handle, info);
+}
+
 static const IfsFsVolumeOpsV2 volume_ops = {
     .header = {IFS_FS_GROUP_ABI_V2, sizeof(IfsFsVolumeOpsV2),
                IFS_FS_GROUP_VOLUME, 0u, IFS_FS_VOLUME_QUERY},
-    .query = (int (*)(void *, IfsFsVolumeInfoV2 *))volume_fill
+    .query = volume_query
 };
 
 static const IfsFsCoreOpsV2 core = {
