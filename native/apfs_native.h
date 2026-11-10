@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <infiltratr/filesystem_module_v2.h>
 
 typedef struct {
     uint64_t start;
@@ -41,6 +42,8 @@ int apfs_read_summary(const char *path, ApfsSummary *summary,
                       char *error, size_t error_size);
 int apfs_analyse(const char *path, ApfsAnalysis *analysis,
                  char *error, size_t error_size);
+int apfs_analyse_host(const IfsFsHostRuntimeV2 *host,
+                      ApfsAnalysis *analysis, char *error, size_t error_size);
 void apfs_analysis_free(ApfsAnalysis *analysis);
 int apfs_writer_preflight(const char *path,
                           char *error, size_t error_size);

@@ -9,7 +9,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(INFILTRATR_COMMON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(INFILTRATR_COMMON_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(infiltratr_common GIT_REPOSITORY https://github.com/Infiltrator-Projects/Libraries.git GIT_TAG c76ec95ef66fc728df6a906ad75a6a4dd63b419b)
+FetchContent_Declare(infiltratr_common GIT_REPOSITORY https://github.com/Infiltrator-Projects/Libraries.git GIT_TAG 5b5fb95988c8d0b53ed29fdecfb0b70274182fd6)
 FetchContent_MakeAvailable(infiltratr_common)
 # Common is a link-time dependency; its development files must not be installed
 # by this standalone filesystem package.
@@ -19,17 +19,28 @@ add_library(apfs-driver SHARED native/apfs_native.c native/apfs_worker.c module/
  fixtures/apfs_codec.c compat/fixture_bridge.c)
 set_source_files_properties(native/apfs_worker.c PROPERTIES COMPILE_DEFINITIONS "main=ifs_apfs_worker_main")
 set_target_properties(apfs-driver PROPERTIES PREFIX "" OUTPUT_NAME "APFS" SUFFIX ".so")
-target_include_directories(apfs-driver PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${CMAKE_CURRENT_SOURCE_DIR}/compat" "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/include" "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories(apfs-driver PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${CMAKE_CURRENT_SOURCE_DIR}/compat" "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/include" "${CMAKE_CURRENT_BINARY_DIR}" "${infiltratr_common_SOURCE_DIR}/include")
 target_compile_definitions(apfs-driver PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
 target_compile_options(apfs-driver PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_link_libraries(apfs-driver PRIVATE InfiltratrCommon::Common OpenSSL::Crypto)
 if(BUILD_TESTING)
+ # Native Common V2 CORE probe: deliberately uninstalled until real V2
+ # mount, file I/O and defragmentation capability parity is qualified.
+ add_executable(apfs-v2-probe-test
+   tests/test_apfs_v2_probe.c module/apfs_v2_probe.c)
+ target_link_libraries(apfs-v2-probe-test PRIVATE
+   apfs-driver InfiltratrCommon::Common)
+ target_include_directories(apfs-v2-probe-test PRIVATE
+   "${CMAKE_CURRENT_SOURCE_DIR}/native")
+ target_include_directories(apfs-v2-probe-test PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
+ target_compile_options(apfs-v2-probe-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+ add_test(NAME apfs-native-v2-probe COMMAND apfs-v2-probe-test)
  add_executable(apfs-module-test tests/test_apfs_module.c)
  target_include_directories(apfs-module-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
  target_link_libraries(apfs-module-test PRIVATE apfs-driver)
  add_test(NAME apfs-module-interface COMMAND apfs-module-test)
     add_executable(apfs-original-native-test tests/test_apfs_native.c)
-    target_include_directories(apfs-original-native-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native")
+    target_include_directories(apfs-original-native-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${infiltratr_common_SOURCE_DIR}/include")
     target_compile_definitions(apfs-original-native-test PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
     target_link_libraries(apfs-original-native-test PRIVATE apfs-driver OpenSSL::Crypto)
     add_test(NAME apfs-original-native COMMAND apfs-original-native-test)
