@@ -45,12 +45,18 @@ int main(void) {
     uint32_t variant=12345;
     CHECK(core->probe(&host,&variant)!=IFS_FS_OK && variant==12345);
     memcpy(disk+32,"NXSB",4); put32(disk+36,4096); put32(disk+40,16);
+    put32(disk+24, UINT32_C(0x40000001));
     uint64_t cs=sum(disk,4096); put32(disk,(uint32_t)cs);
     put32(disk+4,(uint32_t)(cs>>32));
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1 && reads>=8);
     disk[2048]^=1; variant=12345;
     CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==12345);
-    disk[2048]^=1; host.maximum_transfer_bytes=0;
+    disk[2048]^=1; put32(disk+24, UINT32_C(0x40000002));
+    cs=sum(disk,4096); put32(disk,(uint32_t)cs); put32(disk+4,(uint32_t)(cs>>32));
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==12345);
+    put32(disk+24, UINT32_C(0x40000001));
+    cs=sum(disk,4096); put32(disk,(uint32_t)cs); put32(disk+4,(uint32_t)(cs>>32));
+    host.maximum_transfer_bytes=0;
     CHECK(core->probe(&host,&variant)==IFS_FS_INVALID);
     return 0;
 }
