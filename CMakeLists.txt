@@ -29,6 +29,7 @@ if(BUILD_TESTING)
  add_executable(apfs-v2-probe-test
    tests/test_apfs_v2_probe.c module/apfs_v2_probe.c)
  target_link_libraries(apfs-v2-probe-test PRIVATE InfiltratrCommon::Common)
+ target_include_directories(apfs-v2-probe-test PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
  target_compile_options(apfs-v2-probe-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
  add_test(NAME apfs-native-v2-probe COMMAND apfs-v2-probe-test)
  add_executable(apfs-module-test tests/test_apfs_module.c)
