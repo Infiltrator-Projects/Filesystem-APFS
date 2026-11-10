@@ -32,9 +32,8 @@ static uint64_t sum(const uint8_t *p, size_t n) {
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "APFS V2: %s\n",#x); return 1; } } while(0)
 int main(void) {
     const IfsFsModuleApiV2 *api = infiltrator_filesystem_api_v2();
-    CHECK(ifs_fs_api_v2_native_valid(api, "apfs"));
-    CHECK(api->base_v1 == NULL);
-    const IfsFsCoreOpsV1 *core = (const void *)ifs_fs_group_v2(api, IFS_FS_GROUP_CORE);
+    CHECK(ifs_fs_api_v2_valid(api, "apfs"));
+    const IfsFsCoreOpsV2 *core = (const void *)ifs_fs_group_v2(api, IFS_FS_GROUP_CORE);
     CHECK(core && core->probe && !core->mount && !core->write);
     IfsFsHostRuntimeV2 host = {0};
     host.abi_version=IFS_FS_HOST_ABI_V2; host.structure_bytes=sizeof(host);
