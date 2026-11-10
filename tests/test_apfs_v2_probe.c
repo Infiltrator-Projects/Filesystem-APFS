@@ -34,7 +34,12 @@ int main(void) {
     const IfsFsModuleApiV2 *api = infiltrator_filesystem_api_v2();
     CHECK(ifs_fs_api_v2_valid(api, "apfs"));
     const IfsFsCoreOpsV2 *core = (const void *)ifs_fs_group_v2(api, IFS_FS_GROUP_CORE);
-    CHECK(core && core->probe && !core->mount && !core->write);
+    CHECK(core && core->probe && core->mount && core->unmount &&
+          !core->stat && !core->read && !core->write);
+    const IfsFsVolumeOpsV2 *volume_ops = (const void *)
+        ifs_fs_group_v2(api, IFS_FS_GROUP_VOLUME);
+    CHECK(volume_ops && volume_ops->query &&
+          volume_ops->header.capabilities == IFS_FS_VOLUME_QUERY);
     IfsFsHostRuntimeV2 host = {0};
     host.abi_version=IFS_FS_HOST_ABI_V2; host.structure_bytes=sizeof(host);
     host.capabilities=IFS_FS_HOST_READ_ONLY; host.volume_bytes=sizeof(disk);
@@ -48,6 +53,10 @@ int main(void) {
     uint64_t cs=sum(disk,4096); put32(disk,(uint32_t)cs);
     put32(disk+4,(uint32_t)(cs>>32));
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1 && reads>=8);
+    IfsFsVolumeInfoV2 info = {.structure_bytes=sizeof(IfsFsVolumeInfoV2)};
+    void *mounted = NULL;
+    /* A checksummed NXSB envelope alone is not a validated filesystem. */
+    CHECK(core->mount(&host, &mounted, &info) != IFS_FS_OK && mounted == NULL);
     disk[2048]^=1; variant=12345;
     CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==12345);
     disk[2048]^=1; put32(disk+24, UINT32_C(0x40000002));
