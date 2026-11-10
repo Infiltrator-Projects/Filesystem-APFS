@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
-project(FilesystemAPFS VERSION 1.0.0 LANGUAGES C)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" FILESYSTEM_VERSION LIMIT_COUNT 1)
+project(FilesystemAPFS VERSION ${FILESYSTEM_VERSION} LANGUAGES C)
 include(CTest)
 find_package(OpenSSL REQUIRED)
 include(FetchContent)
@@ -13,7 +14,7 @@ FetchContent_MakeAvailable(infiltratr_common)
 # Common is a link-time dependency; its development files must not be installed
 # by this standalone filesystem package.
 set_property(DIRECTORY "${infiltratr_common_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_ALL TRUE)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.h" "#define LD_VERSION \"1.0.0\"\n")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.h" "#define LD_VERSION \"${PROJECT_VERSION}\"\n")
 add_library(apfs-driver SHARED native/apfs_native.c native/apfs_worker.c module/apfs_module.c compat/legacy_services.c
  fixtures/apfs_codec.c compat/fixture_bridge.c)
 set_source_files_properties(native/apfs_worker.c PROPERTIES COMPILE_DEFINITIONS "main=ifs_apfs_worker_main")
