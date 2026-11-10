@@ -19,7 +19,7 @@ add_library(apfs-driver SHARED native/apfs_native.c native/apfs_worker.c module/
  fixtures/apfs_codec.c compat/fixture_bridge.c)
 set_source_files_properties(native/apfs_worker.c PROPERTIES COMPILE_DEFINITIONS "main=ifs_apfs_worker_main")
 set_target_properties(apfs-driver PROPERTIES PREFIX "" OUTPUT_NAME "APFS" SUFFIX ".so")
-target_include_directories(apfs-driver PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${CMAKE_CURRENT_SOURCE_DIR}/compat" "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/include" "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories(apfs-driver PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${CMAKE_CURRENT_SOURCE_DIR}/compat" "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/include" "${CMAKE_CURRENT_BINARY_DIR}" "${infiltratr_common_SOURCE_DIR}/include")
 target_compile_definitions(apfs-driver PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)
 target_compile_options(apfs-driver PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_link_libraries(apfs-driver PRIVATE InfiltratrCommon::Common OpenSSL::Crypto)
