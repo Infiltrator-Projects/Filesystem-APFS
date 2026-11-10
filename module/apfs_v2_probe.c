@@ -48,6 +48,11 @@ static int probe(const IfsFsHostRuntimeV2 *h, uint32_t *variant) {
     rc = bounded_read(h, 0, initial, sizeof(initial));
     if (rc) return rc;
     if (memcmp(initial + 32, "NXSB", 4)) return IFS_FS_NOT_FOUND;
+    /* Reject a checksummed NXSB-like payload with the wrong APFS object
+     * type or storage class: this must be the physical NX superblock. */
+    if ((le32(initial + 24) & UINT32_C(0x0000ffff)) != 1u ||
+        (le32(initial + 24) & UINT32_C(0xc0000000)) != UINT32_C(0x40000000))
+        return IFS_FS_CORRUPT;
     uint32_t block_size = le32(initial + 36);
     uint64_t count = le64(initial + 40);
     if (block_size < 4096 || block_size > 65536 ||
