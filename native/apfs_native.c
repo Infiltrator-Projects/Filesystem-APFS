@@ -21,6 +21,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <infiltratr/filesystem_module_v2.h>
 
 /*
  * Shared APFS bounded-format model.
@@ -100,6 +101,7 @@
 
 typedef struct {
     int fd;
+    const IfsFsHostRuntimeV2 *host;
     uint64_t bytes;
     uint32_t block_size;
     uint64_t block_count;
@@ -216,6 +218,72 @@ static int reader_open(const char *path, Reader *reader,
     return 0;
 }
 
+/* Read the canonical APFS parser through an authenticated Common V2
+ * partition-relative host. Partial metadata reads are rounded to the host's
+ * physical sector contract; no filesystem path or private fd is opened. */
+static int reader_open_host(const IfsFsHostRuntimeV2 *host, Reader *reader,
+                            char *error, size_t capacity)
+{
+    if (!reader || !ifs_fs_host_v2_valid(host)) {
+        set_error(error, capacity, "invalid APFS V2 host runtime");
+        return -1;
+    }
+    memset(reader, 0, sizeof(*reader));
+    reader->fd = -1;
+    reader->host = host;
+    reader->bytes = host->volume_bytes;
+    return 0;
+}
+
+static int reader_host_read(const IfsFsHostRuntimeV2 *host, uint64_t at,
+                            void *buffer, size_t length)
+{
+    const uint32_t sector = host->logical_sector_bytes;
+    const uint32_t maximum =
+        host->maximum_transfer_bytes - host->maximum_transfer_bytes % sector;
+    uint8_t *output = buffer;
+    uint8_t *bounce = NULL;
+    int status = -1;
+    if ((length && !output) || !sector || !maximum ||
+        at > host->volume_bytes || length > host->volume_bytes - at)
+        return -1;
+    while (length) {
+        if (host->cancelled && host->cancelled(host->context))
+            goto done;
+        const uint32_t within = (uint32_t)(at % sector);
+        if (within || length < sector) {
+            const uint64_t aligned = at - within;
+            const size_t available = sector - within;
+            const size_t size = length < available ? length : available;
+            if (aligned > host->volume_bytes ||
+                sector > host->volume_bytes - aligned)
+                goto done;
+            if (!bounce) {
+                bounce = host->allocate(host->context, sector);
+                if (!bounce) goto done;
+            }
+            if (host->read_at(host->context, aligned, bounce, sector) != 0)
+                goto done;
+            memcpy(output, bounce + within, size);
+            at += size;
+            output += size;
+            length -= size;
+        } else {
+            const uint32_t amount = length >= maximum
+                ? maximum : (uint32_t)(length - length % sector);
+            if (!amount || host->read_at(host->context, at, output, amount))
+                goto done;
+            at += amount;
+            output += amount;
+            length -= amount;
+        }
+    }
+    status = 0;
+done:
+    if (bounce) host->release(host->context, bounce);
+    return status;
+}
+
 static void reader_close(Reader *reader)
 {
     if (reader->fd >= 0)
@@ -227,7 +295,9 @@ static int read_bytes(const Reader *reader, uint64_t offset, void *buffer,
                       size_t length, char *error, size_t error_size)
 {
     if (offset > reader->bytes || length > reader->bytes - offset ||
-        ld_pread_full(reader->fd, buffer, length, offset) != (ssize_t)length) {
+        (reader->host
+            ? reader_host_read(reader->host, offset, buffer, length) != 0
+            : ld_pread_full(reader->fd, buffer, length, offset) != (ssize_t)length)) {
         set_error(error, error_size, "short APFS read at byte %" PRIu64, offset);
         return -1;
     }
@@ -997,26 +1067,23 @@ done:
     return result;
 }
 
-int apfs_analyse(const char *path, ApfsAnalysis *analysis,
-                 char *error, size_t error_size)
+static int analyse_reader(Reader *reader, ApfsAnalysis *analysis,
+                          char *error, size_t error_size)
 {
-    if (path == NULL || analysis == NULL) {
+    if (!reader || !analysis) {
         set_error(error, error_size, "invalid APFS analysis request");
         return -1;
     }
     memset(analysis, 0, sizeof(*analysis));
-    Reader reader;
-    if (reader_open(path, &reader, error, error_size) != 0)
-        return -1;
     uint8_t prefix[4096];
     uint8_t *nx = NULL;
     RangeVec used = {0};
     RangeVec fragmented = {0};
     int result = -1;
-    if (read_initial_geometry(&reader, prefix, error, error_size) != 0)
+    if (read_initial_geometry(reader, prefix, error, error_size) != 0)
         goto done;
     uint64_t active_block = 0U;
-    if (load_active_nx(&reader, &nx, &active_block, error, error_size) != 0)
+    if (load_active_nx(reader, &nx, &active_block, error, error_size) != 0)
         goto done;
     if ((obj_type(nx) & APFS_OBJ_TYPE_MASK) != APFS_OBJECT_TYPE_NX_SUPERBLOCK) {
         set_error(error, error_size, "active APFS checkpoint has wrong object type");
@@ -1024,11 +1091,11 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
     }
     uint64_t spaceman_block = 0U;
     uint64_t checkpoint_map_block = 0U;
-    if (checkpoint_spaceman(&reader, nx, active_block, &spaceman_block,
+    if (checkpoint_spaceman(reader, nx, active_block, &spaceman_block,
                             &checkpoint_map_block, error, error_size) != 0)
         goto done;
     uint64_t free_blocks = 0U;
-    if (scan_spaceman(&reader, spaceman_block, &used, &free_blocks,
+    if (scan_spaceman(reader, spaceman_block, &used, &free_blocks,
                       error, error_size) != 0)
         goto done;
 
@@ -1059,17 +1126,17 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
     const uint64_t container_omap =
         infiltratr_load_le64(nx + APFS_NX_OMAP_OID_OFFSET);
     uint64_t volume_block = 0U;
-    if (container_omap >= reader.block_count ||
-        omap_lookup(&reader, container_omap, volume_oid, obj_xid(nx),
+    if (container_omap >= reader->block_count ||
+        omap_lookup(reader, container_omap, volume_oid, obj_xid(nx),
                     &volume_block, error, error_size) != 0)
         goto done;
-    uint8_t *volume = malloc(reader.block_size);
+    uint8_t *volume = malloc(reader->block_size);
     if (volume == NULL) {
         set_error(error, error_size, "out of memory reading APFS volume superblock");
         goto done;
     }
-    if (read_block(&reader, volume_block, volume, error, error_size) != 0 ||
-        !checksum_valid(volume, reader.block_size) ||
+    if (read_block(reader, volume_block, volume, error, error_size) != 0 ||
+        !checksum_valid(volume, reader->block_size) ||
         memcmp(volume + 32U, "APSB", 4U) != 0 ||
         obj_oid(volume) != volume_oid ||
         obj_xid(volume) > obj_xid(nx)) {
@@ -1087,14 +1154,14 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
     if (volume_features != 0U || volume_rocompat != 0U ||
         (volume_incompat & APFS_INCOMPAT_SEALED_VOLUME) != 0U ||
         snapshot_count != 0U || (fs_flags & APFS_FS_UNENCRYPTED) == 0U ||
-        volume_omap >= reader.block_count || root_oid == 0U) {
+        volume_omap >= reader->block_count || root_oid == 0U) {
         free(volume);
         set_error(error, error_size,
                   "APFS exact analysis supports one unencrypted, unsealed, snapshot-free bounded volume");
         goto done;
     }
     uint64_t catalog_block = 0U;
-    if (omap_lookup(&reader, volume_omap, root_oid, obj_xid(nx),
+    if (omap_lookup(reader, volume_omap, root_oid, obj_xid(nx),
                     &catalog_block, error, error_size) != 0) {
         free(volume);
         goto done;
@@ -1118,7 +1185,7 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
     uint64_t regular_files = 0U;
     uint64_t directories = 0U;
     uint64_t fragmented_files = 0U;
-    if (scan_catalog(&reader, catalog_block, &used,
+    if (scan_catalog(reader, catalog_block, &used,
                      &regular_files, &directories, &fragmented_files,
                      &fragmented, error, error_size) != 0) {
         free(volume);
@@ -1126,8 +1193,8 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
     }
     free(volume);
 
-    analysis->block_size = reader.block_size;
-    analysis->block_count = reader.block_count;
+    analysis->block_size = reader->block_size;
+    analysis->block_count = reader->block_count;
     memcpy(analysis->container_uuid, nx + APFS_NX_UUID_OFFSET, 16U);
     analysis->xid = obj_xid(nx);
     analysis->active_nx_block = active_block;
@@ -1135,7 +1202,7 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
     analysis->volume_oid = volume_oid;
     analysis->volume_super_block = volume_block;
     analysis->free_blocks = free_blocks;
-    analysis->used_blocks = reader.block_count - free_blocks;
+    analysis->used_blocks = reader->block_count - free_blocks;
     analysis->regular_files = regular_files;
     analysis->directories = directories;
     analysis->fragmented_files = fragmented_files;
@@ -1152,10 +1219,31 @@ done:
     free(nx);
     free(used.items);
     free(fragmented.items);
-    reader_close(&reader);
     if (result != 0)
         apfs_analysis_free(analysis);
     return result;
+}
+
+int apfs_analyse(const char *path, ApfsAnalysis *analysis,
+                 char *error, size_t error_size)
+{
+    Reader reader;
+    if (!path || !analysis || reader_open(path, &reader, error, error_size))
+        return -1;
+    int status = analyse_reader(&reader, analysis, error, error_size);
+    reader_close(&reader);
+    return status;
+}
+
+int apfs_analyse_host(const IfsFsHostRuntimeV2 *host,
+                      ApfsAnalysis *analysis, char *error, size_t error_size)
+{
+    Reader reader;
+    if (!analysis || reader_open_host(host, &reader, error, error_size))
+        return -1;
+    int status = analyse_reader(&reader, analysis, error, error_size);
+    reader_close(&reader);
+    return status;
 }
 
 void apfs_analysis_free(ApfsAnalysis *analysis)
