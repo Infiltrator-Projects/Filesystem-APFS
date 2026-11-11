@@ -15,7 +15,7 @@ FetchContent_MakeAvailable(infiltratr_common)
 # by this standalone filesystem package.
 set_property(DIRECTORY "${infiltratr_common_SOURCE_DIR}" PROPERTY EXCLUDE_FROM_ALL TRUE)
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.h" "#define LD_VERSION \"${PROJECT_VERSION}\"\n")
-add_library(apfs-driver SHARED native/apfs_native.c native/apfs_worker.c module/apfs_v2_probe.c compat/legacy_services.c
+add_library(apfs-driver SHARED native/apfs_native.c native/apfs_worker.c module/apfs_module.c module/apfs_v2_probe.c compat/legacy_services.c
  fixtures/apfs_codec.c compat/fixture_bridge.c)
 set_source_files_properties(native/apfs_worker.c PROPERTIES COMPILE_DEFINITIONS "main=ifs_apfs_worker_main")
 set_target_properties(apfs-driver PROPERTIES PREFIX "" OUTPUT_NAME "APFS" SUFFIX ".so")
@@ -35,6 +35,11 @@ if(BUILD_TESTING)
  target_include_directories(apfs-v2-probe-test PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
  target_compile_options(apfs-v2-probe-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
  add_test(NAME apfs-native-v2-probe COMMAND apfs-v2-probe-test)
+ # Preserve the original Defragmenter consumer contract during V2 migration.
+ add_executable(apfs-legacy-compat-test tests/test_apfs_module.c)
+ target_include_directories(apfs-legacy-compat-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+ target_link_libraries(apfs-legacy-compat-test PRIVATE apfs-driver)
+ add_test(NAME apfs-v1-consumer-compat COMMAND apfs-legacy-compat-test)
     add_executable(apfs-original-native-test tests/test_apfs_native.c)
     target_include_directories(apfs-original-native-test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${infiltratr_common_SOURCE_DIR}/include")
     target_compile_definitions(apfs-original-native-test PRIVATE _GNU_SOURCE _FILE_OFFSET_BITS=64)

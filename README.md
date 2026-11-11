@@ -11,13 +11,12 @@ The published Debian package installs these three regular files. A manual native
 
 InfiltratorOS calls `--system-package-mode` and decides which outputs need updating. Its worker builds a missing or older SO, repairs the PDF independently, and stores the matching released kernel module when available. Use `--build-only --output DIRECTORY` to build a Debian package.
 
-## Common V2 runtime (1.0.9)
+## Common V2 migration (1.0.10)
 
-The installed APFS.so exports `infiltrator_filesystem_api_v2`, without
-its former V1 exported module interface. The canonical APFS engine is
-retained, with V2 bounded host-I/O probing, checksum and checkpoint
-validation, read-only mount/unmount, and verified volume allocation query.
-Path-level reads, mutation, formatting, defragmentation and recovery are
-**not** yet qualified as Common V2 operations; they are not advertised
-by this API. The old path-based fixture functionality remains source
-code, not an exported production V1 descriptor.
+APFS.so exports canonical Common V2 bounded-host probing, checksum and
+checkpoint validation, read-only mount/unmount and volume accounting.
+The existing V1 worker/fixture entrypoint also remains exported until
+Defragmenter's APFS loader migrates, preserving working functionality
+rather than falsely treating probe-only V2 as a complete replacement.
+V2 path I/O, mutation, defragmentation and recovery are not yet
+qualified or advertised.
