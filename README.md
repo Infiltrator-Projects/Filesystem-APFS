@@ -15,7 +15,7 @@ InfiltratorOS calls `--system-package-mode` and decides which outputs need updat
 
 APFS.so exports canonical Common V2 bounded-host probing, checksum and
 checkpoint validation, read-only mount/unmount and volume accounting.
-The existing V1 worker/fixture entrypoint also remains exported until
+The format-specific worker and fixture interface remains exported until
 Defragmenter's APFS loader migrates, preserving working functionality
 rather than falsely treating probe-only V2 as a complete replacement.
 V2 path I/O, mutation, defragmentation and recovery are not yet
