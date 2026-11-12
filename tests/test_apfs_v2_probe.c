@@ -30,6 +30,10 @@ static uint64_t sum(const uint8_t *p, size_t n) {
     return ((mod - ((a+x)%mod)) << 32) | x;
 }
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "APFS V2: %s\n",#x); return 1; } } while(0)
+static int forbidden_write(void *ctx,uint64_t at,const void *p,uint32_t n)
+{ (void)ctx;(void)at;(void)p;(void)n;return -1; }
+static int forbidden_flush(void *ctx)
+{ (void)ctx;return -1; }
 int main(void) {
     const IfsFsModuleApiV2 *api = infiltrator_filesystem_api_v2();
     CHECK(ifs_fs_api_v2_valid(api, "apfs"));
@@ -55,6 +59,13 @@ int main(void) {
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1 && reads>=8);
     IfsFsVolumeInfoV2 info = {.structure_bytes=sizeof(IfsFsVolumeInfoV2)};
     void *mounted = NULL;
+    host.capabilities=IFS_FS_HOST_EXCLUSIVE|IFS_FS_HOST_DURABLE;
+    host.write_at=forbidden_write;host.flush=forbidden_flush;
+    CHECK(ifs_fs_host_v2_valid(&host));
+    CHECK(core->mount(&host,&mounted,&info)==IFS_FS_ACCESS && mounted==NULL);
+    host.capabilities=IFS_FS_HOST_READ_ONLY;
+    host.write_at=NULL;host.flush=NULL;
+    CHECK(ifs_fs_host_v2_valid(&host));
     /* A checksummed NXSB envelope alone is not a validated filesystem. */
     CHECK(core->mount(&host, &mounted, &info) != IFS_FS_OK && mounted == NULL);
     disk[2048]^=1; variant=12345;

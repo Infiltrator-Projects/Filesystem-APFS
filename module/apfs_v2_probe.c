@@ -117,6 +117,11 @@ static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
         !ifs_fs_host_v2_valid(host))
         return IFS_FS_INVALID;
     *output = NULL;
+    /* APFS checkpoint/catalogue validation is a read-only V2 snapshot.
+     * Writable mounts require separately qualified CoW transaction and
+     * recovery operations, not merely an exclusive host descriptor. */
+    if (!(host->capabilities & IFS_FS_HOST_READ_ONLY))
+        return IFS_FS_ACCESS;
     int result = probe(host, &variant);
     if (result != IFS_FS_OK) return result;
     volume = host->allocate(host->context, sizeof(*volume));
