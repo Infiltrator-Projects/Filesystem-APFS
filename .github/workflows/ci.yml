@@ -15,6 +15,14 @@ jobs:
           test -f build/APFS.so
           nm -D --defined-only build/APFS.so | grep -F infiltrator_filesystem_api_v2
           nm -D --defined-only build/APFS.so | grep -F infiltrator_filesystem_apfs_v1
+      - name: Check the original V2 host boundary with AddressSanitizer
+        run: |
+          cmake -S . -B build-asan -DBUILD_TESTING=ON \
+            -DCMAKE_C_FLAGS='-fsanitize=address -fno-omit-frame-pointer' \
+            -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address \
+            -DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address
+          cmake --build build-asan --parallel 2
+          ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build-asan -R '^apfs-native-v2-probe$' --output-on-failure
       - uses: actions/upload-artifact@v4
         with:
           name: APFS-so

@@ -66,6 +66,16 @@ int main(void) {
     host.capabilities=IFS_FS_HOST_READ_ONLY;
     host.write_at=NULL;host.flush=NULL;
     CHECK(ifs_fs_host_v2_valid(&host));
+    /* The valid superblock reaches mount's host snapshot, then the native
+     * validator must reject the incomplete filesystem. ASan checks that the
+     * older V2 prefix is not read beyond its actual allocation. */
+    volatile size_t short_bytes=IFS_FS_HOST_V2_BASE_BYTES;
+    IfsFsHostRuntimeV2 *short_host=malloc(short_bytes);
+    CHECK(short_host);
+    memcpy(short_host,&host,IFS_FS_HOST_V2_BASE_BYTES);
+    short_host->structure_bytes=IFS_FS_HOST_V2_BASE_BYTES;
+    CHECK(core->mount(short_host,&mounted,&info)!=IFS_FS_OK && mounted==NULL);
+    free(short_host);
     /* A checksummed NXSB envelope alone is not a validated filesystem. */
     CHECK(core->mount(&host, &mounted, &info) != IFS_FS_OK && mounted == NULL);
     disk[2048]^=1; variant=12345;

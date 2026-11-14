@@ -127,7 +127,12 @@ static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
     volume = host->allocate(host->context, sizeof(*volume));
     if (!volume) return IFS_FS_NO_MEMORY;
     memset(volume, 0, sizeof(*volume));
-    volume->host = *host;
+    /* Earlier V2 hosts do not allocate later optional fields. Retain only
+     * the prefix they supplied, bounded by this volume's storage. */
+    const size_t host_bytes = host->structure_bytes < sizeof(volume->host) ?
+        host->structure_bytes : sizeof(volume->host);
+    memcpy(&volume->host, host, host_bytes);
+    volume->host.structure_bytes = (uint32_t)host_bytes;
     if (apfs_analyse_host(host, &volume->media, error, sizeof(error)) != 0) {
         host->release(host->context, volume);
         return IFS_FS_CORRUPT;
