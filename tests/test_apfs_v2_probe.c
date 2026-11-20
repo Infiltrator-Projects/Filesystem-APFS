@@ -44,6 +44,12 @@ int main(void) {
         ifs_fs_group_v2(api, IFS_FS_GROUP_VOLUME);
     CHECK(volume_ops && volume_ops->query &&
           volume_ops->header.capabilities == IFS_FS_VOLUME_QUERY);
+    /* These are opaque tokens, not dereferenceable allocator addresses.
+     * Before the registry repair this would access arbitrary memory. */
+    IfsFsVolumeInfoV2 bogus_info={.structure_bytes=sizeof(bogus_info)};
+    CHECK(core->unmount((void *)(uintptr_t)1u)==IFS_FS_INVALID);
+    CHECK(volume_ops->query((void *)(uintptr_t)1u,&bogus_info)==IFS_FS_INVALID);
+    CHECK(core->unmount((void *)(uintptr_t)UINTPTR_MAX)==IFS_FS_INVALID);
     IfsFsHostRuntimeV2 host = {0};
     host.abi_version=IFS_FS_HOST_ABI_V2; host.structure_bytes=sizeof(host);
     host.capabilities=IFS_FS_HOST_READ_ONLY; host.volume_bytes=sizeof(disk);
