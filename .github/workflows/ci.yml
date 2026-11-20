@@ -1,43 +1,48 @@
-name: Build and verify APFS.so
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Build and verify Common V2-only hosted APFS.so
 on:
   push:
     branches: [main]
-  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - name: Compile and test the real Common V2 provider
+        run: |
+          set -euo pipefail
           cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build build --parallel 2
           ctest --test-dir build --output-on-failure
-          test -f build/APFS.so
-          nm -D --defined-only build/APFS.so | grep -F infiltrator_filesystem_api_v2
-          nm -D --defined-only build/APFS.so | grep -F infiltrator_filesystem_apfs_v1
-      - name: Check the original V2 host boundary with AddressSanitizer
+          bash tests/check_v2_exports.sh build/APFS.so
+      - name: Check V2 host boundary with AddressSanitizer
         run: |
+          set -euo pipefail
           cmake -S . -B build-asan -DBUILD_TESTING=ON \
             -DCMAKE_C_FLAGS='-fsanitize=address -fno-omit-frame-pointer' \
             -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address \
             -DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address
           cmake --build build-asan --parallel 2
           ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build-asan -R '^apfs-native-v2-probe$' --output-on-failure
-      - uses: actions/upload-artifact@v4
-        with:
-          name: APFS-so
-          path: |
-            build/APFS.so
-            docs/APFS.pdf
-
-      - name: Verify exactly one PDF per runtime SO
-        shell: bash
+      - name: Inspect the installed ELF and deny obsolete runtime interfaces
         run: |
           set -euo pipefail
           stage="$(mktemp -d)"
           trap 'rm -rf "$stage"' EXIT
           DESTDIR="$stage" cmake --install build
           test "$(find "$stage" -type f | wc -l)" -eq 2
-          test -f "$stage/System/Filesystems/APFS.so"
-          test -f "$stage/System/Resources/Documentation/Filesystem-APFS.pdf"
-          test "$(head -c 5 "$stage/System/Resources/Documentation/Filesystem-APFS.pdf")" = '%PDF-'
+          module="$stage/System/Filesystems/APFS.so"
+          test -s "$module"
+          cmp build/APFS.so "$module"
+          bash tests/check_v2_exports.sh "$module"
+          test -s "$stage/System/Resources/Documentation/Filesystem-APFS.pdf"
+          test "$(find "$stage" -name '*.ko' | wc -l)" -eq 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: APFS-hosted-v2-unqualified-for-boot
+          path: |
+            build/APFS.so
+            docs/APFS.pdf

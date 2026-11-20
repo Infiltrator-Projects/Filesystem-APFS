@@ -294,10 +294,18 @@ static void reader_close(Reader *reader)
 static int read_bytes(const Reader *reader, uint64_t offset, void *buffer,
                       size_t length, char *error, size_t error_size)
 {
-    if (offset > reader->bytes || length > reader->bytes - offset ||
-        (reader->host
+    if (offset > reader->bytes || length > reader->bytes - offset
+#if defined(IFS_APFS_V2_PRODUCTION)
+        /* Production never calls the old pathname/fd or injected V1 I/O
+         * services. All live reads use the authenticated Common V2 host. */
+        || !reader->host ||
+        reader_host_read(reader->host, offset, buffer, length) != 0
+#else
+        || (reader->host
             ? reader_host_read(reader->host, offset, buffer, length) != 0
-            : ld_pread_full(reader->fd, buffer, length, offset) != (ssize_t)length)) {
+            : ld_pread_full(reader->fd, buffer, length, offset) != (ssize_t)length)
+#endif
+       ) {
         set_error(error, error_size, "short APFS read at byte %" PRIu64, offset);
         return -1;
     }

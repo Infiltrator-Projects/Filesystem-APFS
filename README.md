@@ -1,22 +1,26 @@
 # Filesystem-APFS
-Independent filesystem implementation for InfiltratorOS, using the shared Common ABI.
 
-## Installer files
+The independently owned `APFS.so` installs at
+`/System/Filesystems/APFS.so`. Its documentation installs at
+`/System/Resources/Documentation/Filesystem-APFS.pdf`.
 
-- `/System/Filesystems/APFS.so`
-- `/System/Resources/Documentation/Filesystem-APFS.pdf`
-- `/System/Kernel/Filesystems/apfs.ko`
+## Qualified scope and limitations
 
-The published Debian package installs these three regular files. A manual native RUN compiles the shared object and Linux adapter locally, generates the PDF, and replaces all three files. It uses the running kernel headers by default. Use `--kernel-build DIRECTORY` for a prepared kernel build with `Module.symvers`. The kernel module is stored for manual use.
+The current production shared object exposes **Common V2 only** and implements
+APFS container probing, checksum/checkpoint validation, read-only mount/unmount,
+and volume information through the native APFS analysis engine.
 
-InfiltratorOS calls `--system-package-mode` and decides which outputs need updating. Its worker builds a missing or older SO, repairs the PDF independently, and stores the matching released kernel module when available. Use `--build-only --output DIRECTORY` to build a Debian package.
+**This is not a BOOT-qualified reader.** Directory enumeration, pathname lookup,
+file-content reads, freestanding UEFI execution, and genuine BOOT
+`validate-module` acceptance are outstanding. Do not label this release as a
+bootable filesystem provider or bypass the validator.
 
-## Common V2 migration (1.0.10)
+The original APFS mutation/defragmentation worker, fixture formatters and
+their former V1 interface remain in source **for regression tests only**.
+They are excluded from the installed `APFS.so`. No Linux kernel `.ko` is built
+or bundled as a runtime substitute. Native Linux source is retained for
+provenance and independent future migration work.
 
-APFS.so exports canonical Common V2 bounded-host probing, checksum and
-checkpoint validation, read-only mount/unmount and volume accounting.
-The format-specific worker and fixture interface remains exported until
-Defragmenter's APFS loader migrates, preserving working functionality
-rather than falsely treating probe-only V2 as a complete replacement.
-V2 path I/O, mutation, defragmentation and recovery are not yet
-qualified or advertised.
+The `.deb` and source-embedded `.run` are CI qualification artifacts while
+firmware/path-I/O acceptance remains incomplete; they are not automatically
+published as newly qualified BOOT releases.
