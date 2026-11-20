@@ -86,6 +86,29 @@ typedef struct {
     ApfsAnalysis media;
 } MountedApfs;
 
+/* The native APFS state is heap allocated but an ABI handle is an opaque,
+ * monotonic token. Never dereference a stale pointer after its unmount. */
+#define APFS_V2_MAX_SESSIONS 32u
+static struct {
+    uintptr_t token;
+    MountedApfs *volume;
+} sessions[APFS_V2_MAX_SESSIONS];
+static uintptr_t token_sequence;
+static MountedApfs *find_session(void *handle)
+{
+    const uintptr_t token=(uintptr_t)handle;
+    if (!token) return NULL;
+    for (size_t i=0;i<APFS_V2_MAX_SESSIONS;++i)
+        if (sessions[i].token==token) return sessions[i].volume;
+    return NULL;
+}
+static size_t unused_session(void)
+{
+    for (size_t i=0;i<APFS_V2_MAX_SESSIONS;++i)
+        if (!sessions[i].token) return i;
+    return APFS_V2_MAX_SESSIONS;
+}
+
 static int mounted_valid(const MountedApfs *volume)
 {
     return volume && volume->media.block_size &&
@@ -122,6 +145,9 @@ static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
      * recovery operations, not merely an exclusive host descriptor. */
     if (!(host->capabilities & IFS_FS_HOST_READ_ONLY))
         return IFS_FS_ACCESS;
+    const size_t slot=unused_session();
+    if (slot==APFS_V2_MAX_SESSIONS || token_sequence==UINTPTR_MAX)
+        return IFS_FS_BUSY;
     int result = probe(host, &variant);
     if (result != IFS_FS_OK) return result;
     volume = host->allocate(host->context, sizeof(*volume));
@@ -143,15 +169,25 @@ static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
         host->release(host->context, volume);
         return result;
     }
-    *output = volume;
+    const uintptr_t token=++token_sequence;
+    sessions[slot].token=token;
+    sessions[slot].volume=volume;
+    *output=(void *)token;
     return IFS_FS_OK;
 }
 
 static int native_unmount(void *handle)
 {
-    MountedApfs *volume = handle;
+    MountedApfs *volume=find_session(handle);
     if (!mounted_valid(volume)) return IFS_FS_INVALID;
-    IfsFsHostRuntimeV2 host = volume->host;
+    for (size_t i=0;i<APFS_V2_MAX_SESSIONS;++i) {
+        if (sessions[i].token==(uintptr_t)handle) {
+            sessions[i].token=0u;
+            sessions[i].volume=NULL;
+            break;
+        }
+    }
+    IfsFsHostRuntimeV2 host=volume->host;
     apfs_analysis_free(&volume->media);
     host.release(host.context, volume);
     return IFS_FS_OK;
@@ -159,7 +195,7 @@ static int native_unmount(void *handle)
 
 static int volume_query(void *handle, IfsFsVolumeInfoV2 *info)
 {
-    return volume_fill((const MountedApfs *)handle, info);
+    return volume_fill(find_session(handle), info);
 }
 
 static const IfsFsVolumeOpsV2 volume_ops = {
