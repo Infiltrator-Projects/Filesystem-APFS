@@ -159,9 +159,11 @@ static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
         host->structure_bytes : sizeof(volume->host);
     memcpy(&volume->host, host, host_bytes);
     volume->host.structure_bytes = (uint32_t)host_bytes;
-    if (apfs_analyse_host(host, &volume->media, error, sizeof(error)) != 0) {
+    const int analysis_status =
+        apfs_analyse_host_v2(host, &volume->media, error, sizeof(error));
+    if (analysis_status != IFS_FS_OK) {
         host->release(host->context, volume);
-        return IFS_FS_CORRUPT;
+        return analysis_status;
     }
     result = volume_fill(volume, info);
     if (result != IFS_FS_OK) {

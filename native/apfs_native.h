@@ -44,6 +44,11 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
                  char *error, size_t error_size);
 int apfs_analyse_host(const IfsFsHostRuntimeV2 *host,
                       ApfsAnalysis *analysis, char *error, size_t error_size);
+/* Common V2 classification preserves host I/O errors without replacing
+ * real APFS metadata validation. */
+int apfs_analyse_host_v2(const IfsFsHostRuntimeV2 *host,
+                         ApfsAnalysis *analysis,
+                         char *error, size_t error_size);
 void apfs_analysis_free(ApfsAnalysis *analysis);
 int apfs_writer_preflight(const char *path,
                           char *error, size_t error_size);

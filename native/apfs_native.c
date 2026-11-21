@@ -102,6 +102,7 @@
 typedef struct {
     int fd;
     const IfsFsHostRuntimeV2 *host;
+    int *v2_read_error;
     uint64_t bytes;
     uint32_t block_size;
     uint64_t block_count;
@@ -236,7 +237,7 @@ static int reader_open_host(const IfsFsHostRuntimeV2 *host, Reader *reader,
 }
 
 static int reader_host_read(const IfsFsHostRuntimeV2 *host, uint64_t at,
-                            void *buffer, size_t length)
+                            void *buffer, size_t length, int *reason)
 {
     const uint32_t sector = host->logical_sector_bytes;
     const uint32_t maximum =
@@ -244,12 +245,15 @@ static int reader_host_read(const IfsFsHostRuntimeV2 *host, uint64_t at,
     uint8_t *output = buffer;
     uint8_t *bounce = NULL;
     int status = -1;
+    if (reason) *reason = IFS_FS_INVALID;
     if ((length && !output) || !sector || !maximum ||
         at > host->volume_bytes || length > host->volume_bytes - at)
         return -1;
     while (length) {
-        if (host->cancelled && host->cancelled(host->context))
+        if (host->cancelled && host->cancelled(host->context)) {
+            if (reason) *reason = IFS_FS_BUSY;
             goto done;
+        }
         const uint32_t within = (uint32_t)(at % sector);
         if (within || length < sector) {
             const uint64_t aligned = at - within;
@@ -260,10 +264,15 @@ static int reader_host_read(const IfsFsHostRuntimeV2 *host, uint64_t at,
                 goto done;
             if (!bounce) {
                 bounce = host->allocate(host->context, sector);
-                if (!bounce) goto done;
+                if (!bounce) {
+                    if (reason) *reason = IFS_FS_NO_MEMORY;
+                    goto done;
+                }
             }
-            if (host->read_at(host->context, aligned, bounce, sector) != 0)
+            if (host->read_at(host->context, aligned, bounce, sector) != 0) {
+                if (reason) *reason = IFS_FS_IO_ERROR;
                 goto done;
+            }
             memcpy(output, bounce + within, size);
             at += size;
             output += size;
@@ -271,14 +280,18 @@ static int reader_host_read(const IfsFsHostRuntimeV2 *host, uint64_t at,
         } else {
             const uint32_t amount = length >= maximum
                 ? maximum : (uint32_t)(length - length % sector);
-            if (!amount || host->read_at(host->context, at, output, amount))
+            if (!amount) goto done;
+            if (host->read_at(host->context, at, output, amount) != 0) {
+                if (reason) *reason = IFS_FS_IO_ERROR;
                 goto done;
+            }
             at += amount;
             output += amount;
             length -= amount;
         }
     }
     status = 0;
+    if (reason) *reason = IFS_FS_OK;
 done:
     if (bounce) host->release(host->context, bounce);
     return status;
@@ -299,10 +312,12 @@ static int read_bytes(const Reader *reader, uint64_t offset, void *buffer,
         /* Production never calls the old pathname/fd or injected V1 I/O
          * services. All live reads use the authenticated Common V2 host. */
         || !reader->host ||
-        reader_host_read(reader->host, offset, buffer, length) != 0
+        reader_host_read(reader->host, offset, buffer, length,
+                              reader->v2_read_error) != 0
 #else
         || (reader->host
-            ? reader_host_read(reader->host, offset, buffer, length) != 0
+            ? reader_host_read(reader->host, offset, buffer, length,
+                              reader->v2_read_error) != 0
             : ld_pread_full(reader->fd, buffer, length, offset) != (ssize_t)length)
 #endif
        ) {
@@ -1243,15 +1258,36 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
     return status;
 }
 
-int apfs_analyse_host(const IfsFsHostRuntimeV2 *host,
-                      ApfsAnalysis *analysis, char *error, size_t error_size)
+static int analyse_host_common(const IfsFsHostRuntimeV2 *host,
+                               ApfsAnalysis *analysis,
+                               char *error, size_t error_size,
+                               int *read_error)
 {
     Reader reader;
     if (!analysis || reader_open_host(host, &reader, error, error_size))
         return -1;
+    reader.v2_read_error = read_error;
     int status = analyse_reader(&reader, analysis, error, error_size);
     reader_close(&reader);
     return status;
+}
+
+int apfs_analyse_host(const IfsFsHostRuntimeV2 *host,
+                      ApfsAnalysis *analysis, char *error, size_t error_size)
+{
+    return analyse_host_common(host, analysis, error, error_size, NULL);
+}
+
+int apfs_analyse_host_v2(const IfsFsHostRuntimeV2 *host,
+                         ApfsAnalysis *analysis,
+                         char *error, size_t error_size)
+{
+    int read_error = IFS_FS_OK;
+    const int rc = analyse_host_common(host, analysis, error, error_size,
+                                       &read_error);
+    if (rc == 0) return IFS_FS_OK;
+    if (read_error != IFS_FS_OK) return read_error;
+    return ifs_fs_host_v2_valid(host) ? IFS_FS_CORRUPT : IFS_FS_INVALID;
 }
 
 void apfs_analysis_free(ApfsAnalysis *analysis)

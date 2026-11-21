@@ -7,9 +7,11 @@
 extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
 static uint8_t disk[16 * 4096];
 static unsigned reads;
+static int fail_checkpoint_reads;
 static int reader(void *ctx, uint64_t at, void *dst, uint32_t n) {
     (void)ctx;
-    if (n > 512 || at > sizeof(disk) || n > sizeof(disk) - at)
+    if ((fail_checkpoint_reads && at >= 4096u) ||
+        n > 512 || at > sizeof(disk) || n > sizeof(disk) - at)
         return -1;
     memcpy(dst, disk + (size_t)at, n); ++reads; return 0;
 }
@@ -84,6 +86,20 @@ int main(void) {
     free(short_host);
     /* A checksummed NXSB envelope alone is not a validated filesystem. */
     CHECK(core->mount(&host, &mounted, &info) != IFS_FS_OK && mounted == NULL);
+    /* Genuine host I/O failure after a successful root checksum must remain
+     * I/O_ERROR, never masquerade as corrupt filesystem metadata. */
+    put32(disk+104u,1u); /* one checkpoint descriptor block */
+    put32(disk+112u,1u); /* first checkpoint at physical block one */
+    cs=sum(disk,4096);put32(disk,(uint32_t)cs);
+    put32(disk+4,(uint32_t)(cs>>32));
+    CHECK(core->probe(&host,&variant)==IFS_FS_OK);
+    fail_checkpoint_reads=1;
+    info.structure_bytes=sizeof(info);
+    CHECK(core->mount(&host,&mounted,&info)==IFS_FS_IO_ERROR && !mounted);
+    fail_checkpoint_reads=0;
+    put32(disk+104u,0u);put32(disk+112u,0u);
+    cs=sum(disk,4096);put32(disk,(uint32_t)cs);
+    put32(disk+4,(uint32_t)(cs>>32));
     disk[2048]^=1; variant=12345;
     CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==12345);
     disk[2048]^=1; put32(disk+24, UINT32_C(0x40000002));
