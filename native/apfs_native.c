@@ -103,6 +103,7 @@ typedef struct {
     int fd;
     const IfsFsHostRuntimeV2 *host;
     int *v2_read_error;
+    int *v2_policy_error;
     uint64_t bytes;
     uint32_t block_size;
     uint64_t block_count;
@@ -1181,16 +1182,23 @@ static int analyse_reader(Reader *reader, ApfsAnalysis *analysis,
     const uint64_t fs_flags = infiltratr_load_le64(volume + 264U);
     const uint64_t volume_omap = infiltratr_load_le64(volume + 128U);
     const uint64_t root_oid = infiltratr_load_le64(volume + 136U);
+    /* This provider has no implementation of volume feature, snapshot,
+     * encryption or incompatible-layout semantics. Report UNSUPPORTED for
+     * otherwise readable metadata, not damage to the physical device. */
     if (volume_features != 0U || volume_rocompat != 0U ||
-        /* No incompatible APFS volume features are implemented by this
-         * bounded native reader. Check EVERY bit, not only sealing: accepting
-         * an unknown on-disk layout is not a safe read-only mount. */
-        volume_incompat != 0U ||
-        snapshot_count != 0U || (fs_flags & APFS_FS_UNENCRYPTED) == 0U ||
-        volume_omap >= reader->block_count || root_oid == 0U) {
+        volume_incompat != 0U || snapshot_count != 0U ||
+        (fs_flags & APFS_FS_UNENCRYPTED) == 0U) {
+        if (reader->v2_policy_error)
+            *reader->v2_policy_error = IFS_FS_UNSUPPORTED;
         free(volume);
         set_error(error, error_size,
-                  "APFS exact analysis supports one unencrypted, unsealed, snapshot-free bounded volume");
+                  "APFS exact analysis does not support these volume features");
+        goto done;
+    }
+    if (volume_omap >= reader->block_count || root_oid == 0U) {
+        free(volume);
+        set_error(error, error_size,
+                  "APFS volume object-map or catalog root is out of range");
         goto done;
     }
     uint64_t catalog_block = 0U;
@@ -1271,12 +1279,13 @@ int apfs_analyse(const char *path, ApfsAnalysis *analysis,
 static int analyse_host_common(const IfsFsHostRuntimeV2 *host,
                                ApfsAnalysis *analysis,
                                char *error, size_t error_size,
-                               int *read_error)
+                               int *read_error, int *policy_error)
 {
     Reader reader;
     if (!analysis || reader_open_host(host, &reader, error, error_size))
         return -1;
     reader.v2_read_error = read_error;
+    reader.v2_policy_error = policy_error;
     int status = analyse_reader(&reader, analysis, error, error_size);
     reader_close(&reader);
     return status;
@@ -1285,7 +1294,7 @@ static int analyse_host_common(const IfsFsHostRuntimeV2 *host,
 int apfs_analyse_host(const IfsFsHostRuntimeV2 *host,
                       ApfsAnalysis *analysis, char *error, size_t error_size)
 {
-    return analyse_host_common(host, analysis, error, error_size, NULL);
+    return analyse_host_common(host, analysis, error, error_size, NULL, NULL);
 }
 
 int apfs_analyse_host_v2(const IfsFsHostRuntimeV2 *host,
@@ -1293,10 +1302,12 @@ int apfs_analyse_host_v2(const IfsFsHostRuntimeV2 *host,
                          char *error, size_t error_size)
 {
     int read_error = IFS_FS_OK;
+    int policy_error = IFS_FS_OK;
     const int rc = analyse_host_common(host, analysis, error, error_size,
-                                       &read_error);
+                                       &read_error, &policy_error);
     if (rc == 0) return IFS_FS_OK;
     if (read_error != IFS_FS_OK) return read_error;
+    if (policy_error != IFS_FS_OK) return policy_error;
     return ifs_fs_host_v2_valid(host) ? IFS_FS_CORRUPT : IFS_FS_INVALID;
 }
 
