@@ -80,6 +80,8 @@ if(BUILD_TESTING)
   # Never link the formatter or its V1 fixture ABI into installed APFS.so.
   add_executable(apfs-v2-realmedia-test tests/test_apfs_v2_realmedia.c)
   target_include_directories(apfs-v2-realmedia-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/include"
     "${infiltratr_common_SOURCE_DIR}/include")
   target_link_libraries(apfs-v2-realmedia-test PRIVATE
     apfs-driver apfs-legacy-test-support InfiltratrCommon::Common)
