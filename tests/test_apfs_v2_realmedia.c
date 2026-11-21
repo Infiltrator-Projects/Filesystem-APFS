@@ -5,6 +5,7 @@
  */
 #define _POSIX_C_SOURCE 200809L
 #include <infiltratr/filesystem_module_v2.h>
+#include "ifs_apfs_fixture_host_v1.h"
 #include <stdint.h>
 #include <limits.h>
 #include <stdio.h>
@@ -16,6 +17,46 @@
 
 extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
 extern int ldtm_format_apfs_volume(const char *path);
+extern int ifs_bind_fixture(const IfsApfsFixtureHostV1 *);
+extern void ifs_unbind_fixture(void);
+
+/* The image constructor is intentionally test-only. The production V2
+ * module never sees this profile, V1 fixture host or path-based writer. */
+static const LdtmFilesystemSpec fixture_spec={
+    "apfs","APFS disposable regression",256u,200u,LDTM_CREATOR_APFS,"test"
+};
+static const LdtmFilesystemSpec *fixture_find(const char *name)
+{ return name && !strcmp(name,"apfs") ? &fixture_spec : NULL; }
+static LdtmFragmentProfile fixture_profile(const LdtmFilesystemSpec *spec)
+{
+    LdtmFragmentProfile profile={0};
+    if (spec!=&fixture_spec)return profile;
+    profile.files=LDTM_TARGET_FILE_COUNT;
+    profile.chunks=100u;
+    profile.chunk_kib=256u;
+    for (unsigned i=0u;i<LDTM_TARGET_FILE_COUNT;++i)
+        profile.file_chunks[i]=100u;
+    return profile;
+}
+static uint32_t fixture_chunks(const LdtmFragmentProfile *profile,size_t index)
+{ return profile && index<LDTM_TARGET_FILE_COUNT?profile->file_chunks[index]:0u; }
+static uint64_t fixture_file_bytes(const LdtmFragmentProfile *profile,size_t index)
+{
+    return (uint64_t)fixture_chunks(profile,index) *
+        (profile?profile->chunk_kib:0u)*1024u;
+}
+static uint64_t fixture_payload(const LdtmFragmentProfile *profile)
+{
+    uint64_t size=0u;
+    for (size_t i=0u;i<LDTM_TARGET_FILE_COUNT;++i)
+        size+=fixture_file_bytes(profile,i);
+    return size;
+}
+static const IfsApfsFixtureHostV1 fixture_host={
+    IFS_APFS_FIXTURE_HOST_V1,sizeof(IfsApfsFixtureHostV1),
+    fixture_find,fixture_profile,fixture_chunks,
+    fixture_file_bytes,fixture_payload
+};
 
 enum { BLOCK = 4096u, VOLUME_BLOCK = 102u, TOTAL_MIB = 256u };
 typedef struct {
@@ -115,7 +156,13 @@ int main(void)
     media.fd=mkstemp(path);
     if(media.fd<0)return 1;
     if(ftruncate(media.fd,(off_t)media.size)!=0 ||
-       ldtm_format_apfs_volume(path)!=0) {
+       ifs_bind_fixture(&fixture_host)!=0) {
+        fprintf(stderr,"could not initialise APFS disposable media\\n");
+        failed=1;goto finish;
+    }
+    const int formatted=ldtm_format_apfs_volume(path);
+    ifs_unbind_fixture();
+    if(formatted!=0) {
         fprintf(stderr,"could not construct independent APFS fixture\\n");
         failed=1;goto finish;
     }
