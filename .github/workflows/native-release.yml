@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           run_file="$(find dist -maxdepth 1 -name '*.run' -print -quit)"
-          bash "$run_file" --profile aggressive --system-package-mode --build-only --output "$RUNNER_TEMP/native"
+          bash "$run_file" --profile aggressive --build-only --output "$RUNNER_TEMP/native"
           deb_file="$(find "$RUNNER_TEMP/native" -maxdepth 1 -name '*.deb' -print -quit)"
           test -s "$deb_file"
           python3 standalone/check-package.py "$deb_file" --profile aggressive
