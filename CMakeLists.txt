@@ -75,6 +75,19 @@ if(BUILD_TESTING)
     -Wall -Wextra -Wpedantic -Werror)
   add_test(NAME apfs-native-v2-probe COMMAND apfs-v2-probe-test)
 
+  # Construct disposable APFS media with the historical test-only formatter,
+  # then exercise ONLY the production Common V2 .so for probe/mount/query.
+  # Never link the formatter or its V1 fixture ABI into installed APFS.so.
+  add_executable(apfs-v2-realmedia-test tests/test_apfs_v2_realmedia.c)
+  target_include_directories(apfs-v2-realmedia-test PRIVATE
+    "${infiltratr_common_SOURCE_DIR}/include")
+  target_link_libraries(apfs-v2-realmedia-test PRIVATE
+    apfs-driver apfs-legacy-test-support InfiltratrCommon::Common)
+  target_compile_options(apfs-v2-realmedia-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME apfs-real-v2-checkpoint-feature-policy
+    COMMAND apfs-v2-realmedia-test)
+
   add_executable(apfs-legacy-compat-test tests/test_apfs_module.c)
   target_include_directories(apfs-legacy-compat-test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
