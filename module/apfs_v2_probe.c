@@ -62,6 +62,16 @@ static int probe(const IfsFsHostRuntimeV2 *h, uint32_t *variant) {
     }
     rc = le64(block) == checksum(block, block_size)
          ? IFS_FS_OK : IFS_FS_CORRUPT;
+    /* NX_SUPERBLOCK_OID is 1. A matching signature and Fletcher checksum
+     * are insufficient if the physical container identity is impossible:
+     * an NXSB must have a transaction ID and a nonzero container UUID. */
+    if (rc==IFS_FS_OK) {
+        uint8_t uuid_nonzero=0u;
+        for (unsigned i=0u;i<16u;++i)
+            uuid_nonzero|=block[72u+i];
+        if (le64(block+8u)!=1u || !le64(block+16u) || !uuid_nonzero)
+            rc=IFS_FS_CORRUPT;
+    }
     if (block != initial) h->release(h->context, block);
     if (!rc) *variant = 1u;
     return rc;

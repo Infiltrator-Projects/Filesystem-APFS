@@ -42,3 +42,12 @@ APFS NXSB media, a checksummed negative case with deliberate corruption,
 sector-aligned host callbacks, and a byte-for-byte nonmutation assertion.
 This fixes the probe only: APFS namespace, freestanding ELF and real BOOT
 validator/OVMF kernel reads remain incomplete.
+
+## 21 November 2026 — checksum-valid NXSB identity rejection
+
+The hosted Common V2 probe now rejects an NX superblock whose physical
+object ID is not the NX root object, whose transaction ID is zero or whose
+container UUID is all zeros, even when its complete Fletcher checksum is
+valid. Production CORE.PROBE regression tests use tampered checksummed
+media for the missing UUID and transaction ID cases. This does not add
+any APFS file namespace or firmware export.

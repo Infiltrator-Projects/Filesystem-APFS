@@ -64,6 +64,9 @@ int main(void) {
     CHECK(core->probe(&host,&variant)!=IFS_FS_OK && variant==12345);
     memcpy(disk+32,"NXSB",4); put32(disk+36,4096); put32(disk+40,16);
     put32(disk+24, UINT32_C(0x40000001));
+    put32(disk+8u,1u); /* physical NX superblock object ID */
+    put32(disk+16u,1u); /* committed transaction */
+    for (unsigned i=0;i<16u;++i)disk[72u+i]=(uint8_t)(i+1u);
     uint64_t cs=sum(disk,4096); put32(disk,(uint32_t)cs);
     put32(disk+4,(uint32_t)(cs>>32));
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1 && reads>=8);
@@ -85,6 +88,24 @@ int main(void) {
     host.logical_sector_bytes=512u;host.physical_sector_bytes=512u;
     host.maximum_transfer_bytes=512u;test_sector_bytes=512u;
     put32(disk+36u,4096u);put32(disk+40u,16u);
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1u);
+    /* A fully checksummed fake NXSB must not probe successfully when its
+     * container identity is absent, independent of its block size. */
+    uint8_t preserved_uuid[16];
+    memcpy(preserved_uuid,disk+72u,sizeof(preserved_uuid));
+    memset(disk+72u,0u,sizeof(preserved_uuid));
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    variant=0u;
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
+    memcpy(disk+72u,preserved_uuid,sizeof(preserved_uuid));
+    put32(disk+16u,0u);
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
+    put32(disk+16u,1u);
     cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
     put32(disk+4u,(uint32_t)(cs>>32));
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1u);
