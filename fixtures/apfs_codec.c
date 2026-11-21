@@ -471,7 +471,7 @@ int ldtm_format_apfs_volume(const char *path)
     /* NX block zero and the sole active NX checkpoint object. */
     memset(raw, 0, sizeof(raw));
     apfs_tm_object_header(raw, 1U,
-                          APFS_TM_OBJ_PHYSICAL | 1U, 0U);
+                          APFS_TM_OBJ_EPHEMERAL | 1U, 0U);
     memcpy(raw + 32U, "NXSB", 4U);
     infiltratr_store_le32(raw + 36U, APFS_TM_BLOCK);
     infiltratr_store_le64(raw + 40U, total_blocks);

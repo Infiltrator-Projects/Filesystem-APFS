@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "apfs_native.h"
+#include "apfs_disk.h"
 
 #include "ld_device.h"
 #include "ld_io.h"
@@ -179,25 +180,6 @@ static uint64_t obj_oid(const uint8_t *raw)
 static uint64_t obj_xid(const uint8_t *raw)
 {
     return infiltratr_load_le64(raw + 16U);
-}
-
-static uint64_t fletcher64(const uint8_t *raw, size_t length)
-{
-    uint64_t sum1 = 0U;
-    uint64_t sum2 = 0U;
-    const uint64_t mod = UINT64_C(0xffffffff);
-    for (size_t offset = 8U; offset + 4U <= length; offset += 4U) {
-        sum1 = (sum1 + infiltratr_load_le32(raw + offset)) % mod;
-        sum2 = (sum2 + sum1) % mod;
-    }
-    const uint64_t c1 = mod - ((sum1 + sum2) % mod);
-    const uint64_t c2 = mod - ((sum1 + c1) % mod);
-    return (c2 << 32U) | c1;
-}
-
-static bool checksum_valid(const uint8_t *raw, size_t length)
-{
-    return length >= 8U && infiltratr_load_le64(raw) == fletcher64(raw, length);
 }
 
 static int reader_open(const char *path, Reader *reader,
@@ -470,7 +452,7 @@ static int load_active_nx(Reader *reader, uint8_t **active_out,
         !checksum_valid(backup, reader->block_size) ||
         obj_oid(backup) != 1U || obj_xid(backup) == 0U ||
         (obj_type(backup) & (APFS_OBJ_TYPE_MASK | APFS_OBJ_STORAGE_MASK)) !=
-            (APFS_OBJ_PHYSICAL | APFS_OBJECT_TYPE_NX_SUPERBLOCK)) {
+            APFS_NX_OBJECT_TYPE) {
         free(backup); free(candidate); free(best);
         set_error(error, error_size, "APFS block-zero NX superblock checksum is invalid");
         return -1;
@@ -501,7 +483,7 @@ static int load_active_nx(Reader *reader, uint8_t **active_out,
             !checksum_valid(candidate, reader->block_size) ||
             obj_oid(candidate) != 1U || obj_xid(candidate) == 0U ||
             (obj_type(candidate) & (APFS_OBJ_TYPE_MASK | APFS_OBJ_STORAGE_MASK)) !=
-                (APFS_OBJ_PHYSICAL | APFS_OBJECT_TYPE_NX_SUPERBLOCK))
+                APFS_NX_OBJECT_TYPE)
             continue;
         if (infiltratr_load_le32(candidate + APFS_NX_BLOCK_SIZE_OFFSET) !=
                 reader->block_size ||

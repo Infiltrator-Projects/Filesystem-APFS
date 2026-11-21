@@ -63,7 +63,7 @@ int main(void) {
     uint32_t variant=12345;
     CHECK(core->probe(&host,&variant)!=IFS_FS_OK && variant==0u);
     memcpy(disk+32,"NXSB",4); put32(disk+36,4096); put32(disk+40,16);
-    put32(disk+24, UINT32_C(0x40000001));
+    put32(disk+24, UINT32_C(0x80000001));
     put32(disk+8u,1u); /* physical NX superblock object ID */
     put32(disk+16u,1u); /* committed transaction */
     for (unsigned i=0;i<16u;++i)disk[72u+i]=(uint8_t)(i+1u);
@@ -146,10 +146,13 @@ int main(void) {
     put32(disk+4,(uint32_t)(cs>>32));
     disk[2048]^=1; variant=12345;
     CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
-    disk[2048]^=1; put32(disk+24, UINT32_C(0x40000002));
+    disk[2048]^=1; put32(disk+24, UINT32_C(0x40000001));
     cs=sum(disk,4096); put32(disk,(uint32_t)cs); put32(disk+4,(uint32_t)(cs>>32));
     CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
-    put32(disk+24, UINT32_C(0x40000001));
+    put32(disk+24, UINT32_C(0x40000002));
+    cs=sum(disk,4096); put32(disk,(uint32_t)cs); put32(disk+4,(uint32_t)(cs>>32));
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
+    put32(disk+24, UINT32_C(0x80000001));
     cs=sum(disk,4096); put32(disk,(uint32_t)cs); put32(disk+4,(uint32_t)(cs>>32));
     host.maximum_transfer_bytes=0;
     CHECK(core->probe(&host,&variant)==IFS_FS_INVALID);

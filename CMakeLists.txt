@@ -21,9 +21,26 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.h"
 # Only the native APFS on-disk analyser and Common V2 adapter form APFS.so.
 # The historical worker/fixture API is compiled exclusively for regression
 # tests until its consumers have their own Common V2 implementation.
+set(APFS_FIRMWARE_ELF "${CMAKE_CURRENT_BINARY_DIR}/firmware/APFS.so")
+add_custom_command(OUTPUT "${APFS_FIRMWARE_ELF}"
+ COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_CURRENT_SOURCE_DIR}/module/firmware"
+   -B "${CMAKE_CURRENT_BINARY_DIR}/firmware" -DCMAKE_BUILD_TYPE=Release
+   "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}" "-DCOMMON_INCLUDE_DIR=${infiltratr_common_SOURCE_DIR}/include"
+ COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_CURRENT_BINARY_DIR}/firmware"
+ DEPENDS module/firmware/CMakeLists.txt module/firmware/runtime.c module/firmware/descriptor.c
+   native/apfs_probe.c native/apfs_disk.h
+   "${infiltratr_common_SOURCE_DIR}/include/infiltratr/filesystem_module_v2.h"
+ VERBATIM)
+add_custom_target(apfs-firmware DEPENDS "${APFS_FIRMWARE_ELF}")
 add_library(apfs-driver SHARED
+  native/apfs_probe.c
   native/apfs_native.c
   module/apfs_v2_probe.c)
+add_dependencies(apfs-driver apfs-firmware)
+set_property(TARGET apfs-driver APPEND PROPERTY LINK_DEPENDS "${APFS_FIRMWARE_ELF}")
+add_custom_command(TARGET apfs-driver POST_BUILD
+ COMMAND "${CMAKE_OBJCOPY}" --add-section ".infiltrator_boot=${APFS_FIRMWARE_ELF}"
+   --set-section-flags .infiltrator_boot=readonly "$<TARGET_FILE:apfs-driver>" VERBATIM)
 set_target_properties(apfs-driver PROPERTIES
   PREFIX "" OUTPUT_NAME "APFS" SUFFIX ".so"
   C_VISIBILITY_PRESET hidden)
@@ -41,6 +58,17 @@ target_link_options(apfs-driver PRIVATE
 target_link_libraries(apfs-driver PRIVATE InfiltratrCommon::Common OpenSSL::Crypto)
 
 if(BUILD_TESTING)
+  add_executable(apfs-container-media tests/test_container_media.c)
+  target_include_directories(apfs-container-media PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
+  target_compile_options(apfs-container-media PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(apfs-container-media PRIVATE ${CMAKE_DL_LIBS})
+  find_program(APFS_TEST_MKAPFS mkapfs)
+  find_program(APFS_TEST_APFSCK apfsck)
+  if(APFS_TEST_MKAPFS AND APFS_TEST_APFSCK)
+    add_test(NAME apfs-independently-formatted-container
+      COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/container-media.sh"
+        "$<TARGET_FILE:apfs-container-media>" "$<TARGET_FILE:apfs-driver>")
+  endif()
   # Do NOT install/link this library into the production APFS provider.
   add_library(apfs-legacy-test-support SHARED
     native/apfs_native.c

@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Install verified independent APFS image tools
+        run: bash tests/apfsprogs-fixture-tools.sh
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential binutils cmake git pkg-config libssl-dev libsqlite3-dev dpkg-dev
       - name: Build and qualify portable DEB and source-embedded native RUN
@@ -46,6 +48,16 @@ jobs:
           test "$(find "$RUNNER_TEMP/native-root" -type f | wc -l)" = 2
           bash tests/check_v2_exports.sh "$RUNNER_TEMP/native-root/System/Filesystems/APFS.so"
           test "$(find "$RUNNER_TEMP/native-root" -name '*.ko' | wc -l)" = 0
+      - name: Probe independently formatted containers using both installed packages and their embedded ELFs
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/apfs-container"
+          git clone -q https://github.com/Infiltrator-Projects/Libraries "$work"
+          git -C "$work" checkout -q d23a52693fd3212368d327e1c1302e07ae9510ec
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror -I"$work/include" tests/test_container_media.c -ldl -o "$RUNNER_TEMP/apfs-probe"
+          for profile in portable native-root; do
+            bash tests/container-media.sh "$RUNNER_TEMP/apfs-probe" "$RUNNER_TEMP/$profile/System/Filesystems/APFS.so"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: APFS-hosted-v2-qualification-only-not-a-BOOT-release

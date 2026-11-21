@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Install verified independent APFS image tools
+        run: bash tests/apfsprogs-fixture-tools.sh
       - name: Compile and test the real Common V2 provider
         run: |
           set -euo pipefail
