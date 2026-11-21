@@ -27,7 +27,9 @@ static int probe(const IfsFsHostRuntimeV2 *h, uint32_t *variant) {
     uint8_t initial[4096];
     uint8_t *block = initial;
     int rc;
-    if (!variant || !ifs_fs_host_v2_valid(h)) return IFS_FS_INVALID;
+    if (!variant) return IFS_FS_INVALID;
+    *variant = 0u;
+    if (!ifs_fs_host_v2_valid(h)) return IFS_FS_INVALID;
     if (h->volume_bytes < sizeof(initial) ||
         h->volume_bytes < h->logical_sector_bytes)
         return IFS_FS_NOT_FOUND;
