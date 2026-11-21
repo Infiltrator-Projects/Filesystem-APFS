@@ -42,7 +42,7 @@ static int node(uint8_t *p,uint64_t oid,uint32_t type,uint32_t subtype,
     uint32_t key_start=56u+table_bytes,key=key_start,value=BLOCK-40u;
     for(uint32_t i=0;i<count;++i){
         const Item *x=items+i;
-        if(x->key_n==0u||(!fixed&&(x->key_n>UINT16_MAX||x->value_n>UINT16_MAX))||
+        if(x->key_n==0u||
            x->key_n>value || x->value_n>value ||
            key+x->key_n>value-x->value_n)return -1;
         value-=x->value_n;
