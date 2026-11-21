@@ -91,6 +91,31 @@ int main(void) {
     cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
     put32(disk+4u,(uint32_t)(cs>>32));
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1u);
+    /* Checksums authenticate stored bytes, not their logical geometry.
+     * A corrupt-but-rechecksummed ring must never reach the mount reader. */
+    put32(disk+104u,2u);
+    put32(disk+112u,16u); /* Descriptor ring starts outside 16 blocks. */
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    variant=123u;
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
+    put32(disk+112u,1u);
+    put32(disk+136u,2u); /* Index exceeds the two ring slots. */
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    variant=123u;
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
+    put32(disk+136u,0u);
+    put32(disk+140u,3u); /* Active ring length exceeds capacity. */
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    variant=123u;
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
+    put32(disk+104u,0u);put32(disk+112u,0u);
+    put32(disk+140u,0u);
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1u);
     /* A fully checksummed fake NXSB must not probe successfully when its
      * container identity is absent, independent of its block size. */
     uint8_t preserved_uuid[16];

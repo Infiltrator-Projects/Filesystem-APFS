@@ -40,6 +40,24 @@ int apfs_v2_probe(const IfsFsHostRuntimeV2 *h, uint32_t *variant) {
     }
     rc = checksum_valid(block, block_size)
          ? IFS_FS_OK : IFS_FS_CORRUPT;
+    /* A checksummed NXSB can still contain impossible checkpoint geometry.
+     * Validate physical descriptor bounds before allowing a BOOT probe.
+     * Non-contiguous rings are legitimate APFS but not supported by the
+     * current reader; do not misclassify them as corrupt media. */
+    if (rc == IFS_FS_OK) {
+        const uint32_t descriptors = infiltratr_load_le32(block + 104u);
+        const uint64_t descriptor_base = infiltratr_load_le64(block + 112u);
+        const uint32_t index = infiltratr_load_le32(block + 136u);
+        const uint32_t length = infiltratr_load_le32(block + 140u);
+        if (descriptors) {
+            if (descriptor_base & (UINT64_C(1) << 63u))
+                rc = IFS_FS_UNSUPPORTED;
+            else if (descriptor_base >= count ||
+                     descriptors > count - descriptor_base ||
+                     index >= descriptors || length > descriptors)
+                rc = IFS_FS_CORRUPT;
+        }
+    }
     /* NX_SUPERBLOCK_OID is 1. A matching signature and Fletcher checksum
      * are insufficient if the physical container identity is impossible:
      * an NXSB must have a transaction ID and a nonzero container UUID. */
