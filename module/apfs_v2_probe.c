@@ -5,6 +5,7 @@
 #include <infiltratr/filesystem_module_v2.h>
 #include "apfs_native.h"
 #include "apfs_disk.h"
+#include "apfs_v2_reader.h"
 #include <stdint.h>
 #include <string.h>
 /* The host-backed mount invokes the same complete checkpoint, spaceman
@@ -14,6 +15,7 @@
 typedef struct {
     IfsFsHostRuntimeV2 host;
     ApfsAnalysis media;
+    IfsApfsReader *reader;
 } MountedApfs;
 
 /* The native APFS state is heap allocated but an ABI handle is an opaque,
@@ -95,8 +97,28 @@ static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
         host->release(host->context, volume);
         return analysis_status;
     }
+    uint32_t reader_block = 0u;
+    uint64_t reader_bytes = 0u;
+    result = ifs_apfs_reader_open(&volume->host, &volume->reader,
+                                  &reader_block, &reader_bytes);
+    if (result != IFS_FS_OK) {
+        apfs_analysis_free(&volume->media);
+        host->release(host->context, volume);
+        return result;
+    }
+    /* The namespace must see exactly the geometry already validated by
+     * the hosted checkpoint/spaceman analyser. */
+    if (reader_block != volume->media.block_size ||
+        reader_bytes != volume->media.block_count *
+                        (uint64_t)volume->media.block_size) {
+        ifs_apfs_reader_close(volume->reader);
+        apfs_analysis_free(&volume->media);
+        host->release(host->context, volume);
+        return IFS_FS_CORRUPT;
+    }
     result = volume_fill(volume, info);
     if (result != IFS_FS_OK) {
+        ifs_apfs_reader_close(volume->reader);
         apfs_analysis_free(&volume->media);
         host->release(host->context, volume);
         return result;
@@ -120,6 +142,7 @@ static int native_unmount(void *handle)
         }
     }
     IfsFsHostRuntimeV2 host=volume->host;
+    ifs_apfs_reader_close(volume->reader);
     apfs_analysis_free(&volume->media);
     host.release(host.context, volume);
     return IFS_FS_OK;
@@ -136,12 +159,31 @@ static const IfsFsVolumeOpsV2 volume_ops = {
     .query = volume_query
 };
 
+static int native_stat(void *handle,const char *path,IfsFsEntryV2 *entry)
+{
+    MountedApfs *v=find_session(handle);
+    return v ? ifs_apfs_reader_stat(v->reader,path,entry):IFS_FS_INVALID;
+}
+static int native_list(void *handle,const char *path,uint32_t index,IfsFsEntryV2 *entry)
+{
+    MountedApfs *v=find_session(handle);
+    return v ? ifs_apfs_reader_list(v->reader,path,index,entry):IFS_FS_INVALID;
+}
+static int native_read(void *handle,const char *path,uint64_t at,void *data,uint32_t bytes)
+{
+    MountedApfs *v=find_session(handle);
+    return v ? ifs_apfs_reader_read(v->reader,path,at,data,bytes):IFS_FS_INVALID;
+}
 static const IfsFsCoreOpsV2 core = {
     .header = { IFS_FS_GROUP_ABI_V2, sizeof(IfsFsCoreOpsV2),
-                IFS_FS_GROUP_CORE, 0, IFS_FS_CORE_PROBE | IFS_FS_CORE_MOUNT },
+                IFS_FS_GROUP_CORE, 0, IFS_FS_CORE_PROBE | IFS_FS_CORE_MOUNT |
+                IFS_FS_CORE_STAT | IFS_FS_CORE_LIST | IFS_FS_CORE_READ },
     .probe = apfs_v2_probe,
     .mount = native_mount,
-    .unmount = native_unmount
+    .unmount = native_unmount,
+    .stat = native_stat,
+    .directory_entry = native_list,
+    .read = native_read
 };
 static const IfsFsGroupHeaderV2 *query(uint32_t id, uint32_t lo, uint32_t hi) {
     if (lo > IFS_FS_GROUP_ABI_V2 || hi < IFS_FS_GROUP_ABI_V2)

@@ -45,7 +45,9 @@ int main(int argc, char **argv)
     const IfsFsCoreOpsV2 *core = (const void *)ifs_fs_group_v2(api, IFS_FS_GROUP_CORE);
     REQUIRE(core && core->probe);
     if (profile & IFS_FS_PROFILE_FIRMWARE)
-        REQUIRE(core->header.capabilities==IFS_FS_CORE_PROBE && !core->mount && !core->read);
+        REQUIRE(core->header.capabilities==(IFS_FS_CORE_PROBE|IFS_FS_CORE_MOUNT|
+            IFS_FS_CORE_STAT|IFS_FS_CORE_LIST|IFS_FS_CORE_READ) &&
+            core->mount && core->stat && core->directory_entry && core->read);
     Image image = { .fd = open(argv[2], O_RDONLY), .sector = (uint32_t)strtoul(argv[3], NULL, 10) };
     struct stat status;
     REQUIRE(image.fd >= 0 && !fstat(image.fd, &status));

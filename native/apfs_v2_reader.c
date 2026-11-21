@@ -62,7 +62,7 @@ static void release(IfsApfsReader *r,void *p)
 }
 static int read_block(IfsApfsReader *r,uint64_t addr,uint8_t *out)
 {
-    if(addr>=r->blocks || r->block_size>UINT64_MAX/addr && addr)
+    if(addr>=r->blocks || (addr && r->block_size>UINT64_MAX/addr))
         return IFS_FS_CORRUPT;
     return ifs_fs_host_read_bytes_v2(
         &r->host,addr*(uint64_t)r->block_size,out,r->block_size);

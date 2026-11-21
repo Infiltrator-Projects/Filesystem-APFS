@@ -28,13 +28,15 @@ add_custom_command(OUTPUT "${APFS_FIRMWARE_ELF}"
    "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}" "-DCOMMON_INCLUDE_DIR=${infiltratr_common_SOURCE_DIR}/include"
  COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_CURRENT_BINARY_DIR}/firmware"
  DEPENDS module/firmware/CMakeLists.txt module/firmware/runtime.c module/firmware/descriptor.c
-   native/apfs_probe.c native/apfs_disk.h
+   native/apfs_probe.c native/apfs_disk.h native/apfs_v2_reader.c
+   native/apfs_v2_reader.h
    "${infiltratr_common_SOURCE_DIR}/include/infiltratr/filesystem_module_v2.h"
  VERBATIM)
 add_custom_target(apfs-firmware DEPENDS "${APFS_FIRMWARE_ELF}")
 add_library(apfs-driver SHARED
   native/apfs_probe.c
   native/apfs_native.c
+  native/apfs_v2_reader.c
   module/apfs_v2_probe.c)
 add_dependencies(apfs-driver apfs-firmware)
 set_property(TARGET apfs-driver APPEND PROPERTY LINK_DEPENDS "${APFS_FIRMWARE_ELF}")

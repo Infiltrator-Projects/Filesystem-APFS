@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 cmake_minimum_required(VERSION 3.20)
 project(ApfsFirmware LANGUAGES C)
-add_library(apfs-boot MODULE descriptor.c ../../native/apfs_probe.c runtime.c)
+add_library(apfs-boot MODULE descriptor.c ../../native/apfs_probe.c
+    ../../native/apfs_v2_reader.c runtime.c)
 set_target_properties(apfs-boot PROPERTIES PREFIX "" OUTPUT_NAME APFS C_VISIBILITY_PRESET hidden)
 target_compile_features(apfs-boot PRIVATE c_std_11)
 target_include_directories(apfs-boot PRIVATE "${COMMON_INCLUDE_DIR}" ../../native)

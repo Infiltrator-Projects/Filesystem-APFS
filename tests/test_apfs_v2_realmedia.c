@@ -173,7 +173,7 @@ int main(void)
     const IfsFsVolumeOpsV2 *volume=(const IfsFsVolumeOpsV2 *)
         ifs_fs_group_v2(api,IFS_FS_GROUP_VOLUME);
     CHECK(core && volume && core->probe && core->mount && core->unmount &&
-          !core->stat && !core->directory_entry && !core->read &&
+          core->stat && core->directory_entry && core->read &&
           !core->write && volume->query);
     IfsFsHostRuntimeV2 host=test_host(&media);
     CHECK(ifs_fs_host_v2_valid(&host));
@@ -186,6 +186,13 @@ int main(void)
     CHECK(core->mount(&host,&mounted,&info)==IFS_FS_OK && mounted);
     CHECK(info.block_bytes==BLOCK && info.total_bytes==media.size &&
           info.variant==1u && info.free_bytes<=media.size);
+    char name[256]={0};
+    IfsFsEntryV2 root={.structure_bytes=sizeof(root),
+                       .name=name,.name_capacity=sizeof(name)};
+    CHECK(core->stat(mounted,"/",&root)==IFS_FS_OK &&
+          root.type==IFS_FS_ENTRY_DIRECTORY && !strcmp(name,"/"));
+    CHECK(core->directory_entry(mounted,"/",0u,&root)==IFS_FS_END);
+    CHECK(core->stat(mounted,"/missing",&root)==IFS_FS_NOT_FOUND);
     IfsFsVolumeInfoV2 queried={.structure_bytes=sizeof(queried)};
     CHECK(volume->query(mounted,&queried)==IFS_FS_OK &&
           queried.total_bytes==info.total_bytes);
