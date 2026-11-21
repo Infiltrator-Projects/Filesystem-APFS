@@ -8,10 +8,12 @@ extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
 static uint8_t disk[16 * 4096];
 static unsigned reads;
 static int fail_checkpoint_reads;
+static uint32_t test_sector_bytes = 512u;
 static int reader(void *ctx, uint64_t at, void *dst, uint32_t n) {
     (void)ctx;
     if ((fail_checkpoint_reads && at >= 4096u) ||
-        n > 512 || at > sizeof(disk) || n > sizeof(disk) - at)
+        n != test_sector_bytes || at % test_sector_bytes ||
+        at > sizeof(disk) || n > sizeof(disk) - at)
         return -1;
     memcpy(dst, disk + (size_t)at, n); ++reads; return 0;
 }
@@ -65,6 +67,27 @@ int main(void) {
     uint64_t cs=sum(disk,4096); put32(disk,(uint32_t)cs);
     put32(disk+4,(uint32_t)(cs>>32));
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1 && reads>=8);
+    /* An 8K APFS block on 8K logical-sector media must read correctly
+     * through the Common V2 byte-range bridge, not a 4K BlockIo call. */
+    put32(disk+36u,8192u);put32(disk+40u,8u);
+    cs=sum(disk,8192u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    host.logical_sector_bytes=8192u;host.physical_sector_bytes=8192u;
+    host.maximum_transfer_bytes=8192u;test_sector_bytes=8192u;
+    uint8_t unchanged[8192u];
+    memcpy(unchanged,disk,sizeof(unchanged));
+    variant=0u;
+    CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1u);
+    CHECK(memcmp(unchanged,disk,sizeof(unchanged))==0);
+    disk[6000u]^=1u;variant=0u;
+    CHECK(core->probe(&host,&variant)==IFS_FS_CORRUPT && variant==0u);
+    disk[6000u]^=1u;
+    host.logical_sector_bytes=512u;host.physical_sector_bytes=512u;
+    host.maximum_transfer_bytes=512u;test_sector_bytes=512u;
+    put32(disk+36u,4096u);put32(disk+40u,16u);
+    cs=sum(disk,4096u);put32(disk,(uint32_t)cs);
+    put32(disk+4u,(uint32_t)(cs>>32));
+    CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1u);
     IfsFsVolumeInfoV2 info = {.structure_bytes=sizeof(IfsFsVolumeInfoV2)};
     void *mounted = NULL;
     host.capabilities=IFS_FS_HOST_EXCLUSIVE|IFS_FS_HOST_DURABLE;

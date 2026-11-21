@@ -23,30 +23,18 @@ static uint64_t checksum(const uint8_t *p, uint32_t bytes) {
     uint64_t x = mod - ((a + b) % mod);
     return ((mod - ((a + x) % mod)) << 32) | x;
 }
-static int bounded_read(const IfsFsHostRuntimeV2 *h, uint64_t pos,
-                        uint8_t *out, uint32_t bytes) {
-    const uint32_t step = h->maximum_transfer_bytes -
-        h->maximum_transfer_bytes % h->logical_sector_bytes;
-    if (!step || bytes % h->logical_sector_bytes ||
-        pos > h->volume_bytes || bytes > h->volume_bytes - pos)
-        return IFS_FS_INVALID;
-    while (bytes) {
-        uint32_t n = bytes < step ? bytes : step;
-        if (h->read_at(h->context, pos, out, n) != 0)
-            return IFS_FS_IO_ERROR;
-        out += n; pos += n; bytes -= n;
-    }
-    return IFS_FS_OK;
-}
 static int probe(const IfsFsHostRuntimeV2 *h, uint32_t *variant) {
     uint8_t initial[4096];
     uint8_t *block = initial;
     int rc;
     if (!variant || !ifs_fs_host_v2_valid(h)) return IFS_FS_INVALID;
     if (h->volume_bytes < sizeof(initial) ||
-        h->logical_sector_bytes > sizeof(initial))
+        h->volume_bytes < h->logical_sector_bytes)
         return IFS_FS_NOT_FOUND;
-    rc = bounded_read(h, 0, initial, sizeof(initial));
+    /* Read the superblock prefix through Common V2's sector-safe byte
+     * reader. A 4096-byte APFS prefix on 8K/16K/64K logical media must
+     * not issue an unaligned 4096-byte BlockIo request. */
+    rc = ifs_fs_host_read_bytes_v2(h, 0, initial, sizeof(initial));
     if (rc) return rc;
     if (memcmp(initial + 32, "NXSB", 4)) return IFS_FS_NOT_FOUND;
     /* Reject a checksummed NXSB-like payload with the wrong APFS object
@@ -64,8 +52,9 @@ static int probe(const IfsFsHostRuntimeV2 *h, uint32_t *variant) {
         block = h->allocate(h->context, block_size);
         if (!block) return IFS_FS_NO_MEMORY;
         memcpy(block, initial, sizeof(initial));
-        rc = bounded_read(h, sizeof(initial), block + sizeof(initial),
-                          block_size - sizeof(initial));
+        rc = ifs_fs_host_read_bytes_v2(h, sizeof(initial),
+                                       block + sizeof(initial),
+                                       block_size - sizeof(initial));
         if (rc) {
             h->release(h->context, block);
             return rc;

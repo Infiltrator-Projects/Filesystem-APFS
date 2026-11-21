@@ -29,3 +29,16 @@ release. Before the module may be called BOOT-compatible, implement and test
 real Common V2 namespace reads through a freestanding shared engine, test
 valid/corrupt APFS images and nonmutation, and pass the unmodified production
 validator and OVMF Linux kernel/initramfs handoff.
+
+## 21 November 2026 — sector-aligned APFS probe repair
+
+The Common V2 APFS NXSB probe now handles valid 8 KiB and larger logical
+sectors by using the canonical Common V2 byte-range host reader for both
+the 4 KiB prefix and the remainder of the on-disk block. It no longer
+issues illegal unaligned 4 KiB BlockIo reads against an 8 KiB sector or
+wrongly reports the filesystem missing solely for large host sectors.
+The production exported CORE.PROBE is tested with checksum-valid 8 KiB
+APFS NXSB media, a checksummed negative case with deliberate corruption,
+sector-aligned host callbacks, and a byte-for-byte nonmutation assertion.
+This fixes the probe only: APFS namespace, freestanding ELF and real BOOT
+validator/OVMF kernel reads remain incomplete.
