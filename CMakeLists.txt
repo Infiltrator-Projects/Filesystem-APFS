@@ -95,6 +95,19 @@ if(BUILD_TESTING)
   target_link_libraries(apfs-legacy-test-support PRIVATE
     InfiltratrCommon::Common OpenSSL::Crypto)
 
+  add_executable(apfs-firmware-v2-namespace-test
+    tests/test_apfs_v2_namespace.c
+    module/firmware/descriptor.c
+    native/apfs_probe.c
+    native/apfs_v2_reader.c)
+  target_include_directories(apfs-firmware-v2-namespace-test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${infiltratr_common_SOURCE_DIR}/include")
+  target_compile_options(apfs-firmware-v2-namespace-test PRIVATE
+    -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME apfs-freestanding-v2-namespace
+    COMMAND apfs-firmware-v2-namespace-test)
+
   add_executable(apfs-v2-probe-test tests/test_apfs_v2_probe.c)
   target_include_directories(apfs-v2-probe-test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/native"
