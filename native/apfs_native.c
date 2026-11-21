@@ -466,7 +466,10 @@ static int load_active_nx(Reader *reader, uint8_t **active_out,
     }
     if (read_block(reader, 0U, backup, error, error_size) != 0 ||
         memcmp(backup + APFS_NX_MAGIC_OFFSET, "NXSB", 4U) != 0 ||
-        !checksum_valid(backup, reader->block_size)) {
+        !checksum_valid(backup, reader->block_size) ||
+        obj_oid(backup) != 1U || obj_xid(backup) == 0U ||
+        (obj_type(backup) & (APFS_OBJ_TYPE_MASK | APFS_OBJ_STORAGE_MASK)) !=
+            (APFS_OBJ_PHYSICAL | APFS_OBJECT_TYPE_NX_SUPERBLOCK)) {
         free(backup); free(candidate); free(best);
         set_error(error, error_size, "APFS block-zero NX superblock checksum is invalid");
         return -1;
@@ -494,7 +497,10 @@ static int load_active_nx(Reader *reader, uint8_t **active_out,
             return -1;
         }
         if (memcmp(candidate + APFS_NX_MAGIC_OFFSET, "NXSB", 4U) != 0 ||
-            !checksum_valid(candidate, reader->block_size))
+            !checksum_valid(candidate, reader->block_size) ||
+            obj_oid(candidate) != 1U || obj_xid(candidate) == 0U ||
+            (obj_type(candidate) & (APFS_OBJ_TYPE_MASK | APFS_OBJ_STORAGE_MASK)) !=
+                (APFS_OBJ_PHYSICAL | APFS_OBJECT_TYPE_NX_SUPERBLOCK))
             continue;
         if (infiltratr_load_le32(candidate + APFS_NX_BLOCK_SIZE_OFFSET) !=
                 reader->block_size ||
@@ -1161,6 +1167,7 @@ static int analyse_reader(Reader *reader, ApfsAnalysis *analysis,
     if (read_block(reader, volume_block, volume, error, error_size) != 0 ||
         !checksum_valid(volume, reader->block_size) ||
         memcmp(volume + 32U, "APSB", 4U) != 0 ||
+        (obj_type(volume) & APFS_OBJ_TYPE_MASK) != APFS_OBJECT_TYPE_FS ||
         obj_oid(volume) != volume_oid ||
         obj_xid(volume) > obj_xid(nx)) {
         free(volume);
@@ -1175,7 +1182,10 @@ static int analyse_reader(Reader *reader, ApfsAnalysis *analysis,
     const uint64_t volume_omap = infiltratr_load_le64(volume + 128U);
     const uint64_t root_oid = infiltratr_load_le64(volume + 136U);
     if (volume_features != 0U || volume_rocompat != 0U ||
-        (volume_incompat & APFS_INCOMPAT_SEALED_VOLUME) != 0U ||
+        /* No incompatible APFS volume features are implemented by this
+         * bounded native reader. Check EVERY bit, not only sealing: accepting
+         * an unknown on-disk layout is not a safe read-only mount. */
+        volume_incompat != 0U ||
         snapshot_count != 0U || (fs_flags & APFS_FS_UNENCRYPTED) == 0U ||
         volume_omap >= reader->block_count || root_oid == 0U) {
         free(volume);
