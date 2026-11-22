@@ -216,6 +216,11 @@ static int decode_drec(const Record *record,uint64_t parent,
 }
 static int inode_for(IfsApfsReader *r,uint64_t target,Inode *result)
 {
+    int found=0;
+    Inode matched={0};
+    /* The APFS inode key is unique in a committed catalogue snapshot.
+     * A second instance is malformed even if its values happen to agree:
+     * accepting the first entry would make path results order-dependent. */
     for(uint32_t i=0;i<r->records;++i){
         Record record;
         int rc=record_at(r->catalog,r->block_size,r->records,i,0,&record);
@@ -262,7 +267,13 @@ static int inode_for(IfsApfsReader *r,uint64_t target,Inode *result)
             }
             if(!have_stream)return IFS_FS_UNSUPPORTED;
         }
-        *result=f;return IFS_FS_OK;
+        if(found)return IFS_FS_CORRUPT;
+        matched=f;
+        found=1;
+    }
+    if(found){
+        *result=matched;
+        return IFS_FS_OK;
     }
     return IFS_FS_NOT_FOUND;
 }
