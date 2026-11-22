@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dlfcn.h>
 #define BLOCK 4096u
 #define BLOCK_COUNT 64u
 #define XID UINT64_C(42)
@@ -148,10 +149,25 @@ static int forbidden_flush(void *context){(void)context;return -1;}
 static void *alloc(void *context,size_t n){(void)context;return malloc(n);}
 static void release(void *context,void *p){(void)context;free(p);}
 extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
-int main(void)
+int main(int argc,char **argv)
 {
+    CHECK(argc==1 || argc==2);
     CHECK(make_image()==0);
-    const IfsFsModuleApiV2 *api=infiltrator_filesystem_api_v2();
+    /* The production firmware ELF can be supplied as argv[1]. Resolve its
+     * exact Common V2 entry point rather than testing only linked source. */
+    void *image=NULL;
+    const IfsFsModuleApiV2 *api=NULL;
+    if(argc==2) {
+        image=dlopen(argv[1],RTLD_NOW|RTLD_LOCAL);
+        CHECK(image!=NULL);
+        void *symbol=dlsym(image,IFS_FS_COMMON_EXPORT_V2);
+        IfsFsModuleApiEntryV2 entry=NULL;
+        CHECK(symbol && sizeof(entry)==sizeof(symbol));
+        memcpy(&entry,&symbol,sizeof(entry));
+        api=entry?entry():NULL;
+    } else {
+        api=infiltrator_filesystem_api_v2();
+    }
     CHECK(ifs_fs_api_v2_valid(api,"apfs"));
     CHECK(api->runtime_profiles==(IFS_FS_PROFILE_FREESTANDING|
                                  IFS_FS_PROFILE_FIRMWARE));
@@ -227,6 +243,7 @@ int main(void)
     info.structure_bytes=sizeof(info);mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
     CHECK(!context.writes);
+    CHECK(!image || dlclose(image)==0);
     puts("APFS-FREESTANDING-COMMON-V2-DIRECTORY-AND-KERNEL-READ-PASS");
     return 0;
 }
