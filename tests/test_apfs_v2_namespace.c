@@ -93,7 +93,7 @@ static void drec(Item *r,uint64_t parent,const char *name,uint64_t child,
     put64(r->value,child);put16(r->value+16u,flags);
 }
 static const char payload[]="APFS Common V2 kernel image: verified";
-static int make_image(int duplicate_name)
+static int make_image(int duplicate_name,int duplicate_inode)
 {
     uint8_t *nx=disk;
     object(nx,1u,0x80000001u,0u);
@@ -112,7 +112,7 @@ static int make_image(int duplicate_name)
     memcpy(v+32u,"APSB",4u);
     put64(v+128u,11u);put64(v+136u,300u);
     put64(v+264u,1u);seal(v);
-    Item entries[7]={0};
+    Item entries[8]={0};
     inode(&entries[0],2u,2u,0040755u);
     drec(&entries[1],2u,"boot",3u,4u);
     inode(&entries[2],3u,3u,0040755u);
@@ -131,10 +131,12 @@ static int make_image(int duplicate_name)
     memcpy(disk+20u*BLOCK,payload,sizeof(payload)-1u);
     /* A duplicate fully checksummed directory key must be rejected during
      * the real Common V2 pathname traversal, not silently choose a child. */
+    unsigned count=6u;
     if(duplicate_name)
-        drec(&entries[6],3u,"kernel.bin",4u,8u);
-    return node(disk+13u*BLOCK,300u,2u,14u,entries,
-                duplicate_name?7u:6u,0);
+        drec(&entries[count++],3u,"kernel.bin",4u,8u);
+    if(duplicate_inode)
+        entries[count++]=entries[4];
+    return node(disk+13u*BLOCK,300u,2u,14u,entries,count,0);
 }
 static int read_at(void *context,uint64_t pos,void *dst,uint32_t n)
 {
@@ -157,7 +159,7 @@ extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
 int main(int argc,char **argv)
 {
     CHECK(argc==1 || argc==2);
-    CHECK(make_image(0)==0);
+    CHECK(make_image(0,0)==0);
     /* The production firmware ELF can be supplied as argv[1]. Resolve its
      * exact Common V2 entry point rather than testing only linked source. */
     void *image=NULL;
@@ -247,7 +249,15 @@ int main(int argc,char **argv)
     disk[13u*BLOCK+2048u]^=1u;
     info.structure_bytes=sizeof(info);mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
-    CHECK(make_image(1)==0);
+    CHECK(make_image(1,0)==0);
+    info.structure_bytes=sizeof(info);mount=NULL;
+    CHECK(core->mount(&host,&mount,&info)==IFS_FS_OK && mount);
+    CHECK(core->stat(mount,"/boot/kernel.bin",&entry)==IFS_FS_CORRUPT);
+    CHECK(core->read(mount,"/boot/kernel.bin",0u,readback,1u)==IFS_FS_CORRUPT);
+    CHECK(core->unmount(mount)==IFS_FS_OK);
+    /* A second checksummed inode key must fail independently of duplicate
+     * directory entries, through the production Common V2 read path. */
+    CHECK(make_image(0,1)==0);
     info.structure_bytes=sizeof(info);mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_OK && mount);
     CHECK(core->stat(mount,"/boot/kernel.bin",&entry)==IFS_FS_CORRUPT);
