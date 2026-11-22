@@ -105,8 +105,11 @@ if(BUILD_TESTING)
     "${infiltratr_common_SOURCE_DIR}/include")
   target_compile_options(apfs-firmware-v2-namespace-test PRIVATE
     -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(apfs-firmware-v2-namespace-test PRIVATE ${CMAKE_DL_LIBS})
   add_test(NAME apfs-freestanding-v2-namespace
     COMMAND apfs-firmware-v2-namespace-test)
+  add_test(NAME apfs-embedded-freestanding-v2-namespace
+    COMMAND apfs-firmware-v2-namespace-test "${APFS_FIRMWARE_ELF}")
 
   add_executable(apfs-v2-probe-test tests/test_apfs_v2_probe.c)
   target_include_directories(apfs-v2-probe-test PRIVATE
