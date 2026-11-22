@@ -289,6 +289,11 @@ static int locate(IfsApfsReader *r,const char *path,uint64_t *oid,
         if(rc!=IFS_FS_OK)return rc;
         if(parent.type!=IFS_FS_ENTRY_DIRECTORY)return IFS_FS_NOT_FOUND;
         int found=0;
+        uint64_t matched_child=0u;
+        /* A checksummed catalogue can still contain conflicting records.
+         * An exact parent/name key must identify precisely one child.
+         * Inspect the entire leaf before choosing a pathname component;
+         * returning the first match would silently conceal corruption. */
         for(uint32_t i=0;i<r->records;++i){
             Record record;
             rc=record_at(r->catalog,r->block_size,r->records,i,0,&record);
@@ -300,10 +305,13 @@ static int locate(IfsApfsReader *r,const char *path,uint64_t *oid,
             if(rc==IFS_FS_NOT_FOUND)continue;
             if(rc!=IFS_FS_OK)return rc;
             if(length==n&&!memcmp(name,start,n)){
-                current=child;found=1;break;
+                if(found)return IFS_FS_CORRUPT;
+                matched_child=child;
+                found=1;
             }
         }
         if(!found)return IFS_FS_NOT_FOUND;
+        current=matched_child;
         *base=start;*base_bytes=n;
         if(!*p)goto done;
         ++p;
