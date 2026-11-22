@@ -1,53 +1,63 @@
-# APFS Common V2 migration status
+# APFS Common V2 implementation and qualification — 22 November 2026
 
-The native APFS engine and its checksum/checkpoint/spaceman/catalog parser remain
-in this repository. On-disk validation is not a replacement for an actual
-read-only boot namespace.
+## Authoritative production interface
 
-## Hosted provider
+The only installed filesystem provider is `/System/Filesystems/APFS.so`,
+exporting `infiltrator_filesystem_api_v2`. Its hosted read-only Common V2
+CORE implementation provides PROBE, MOUNT/UNMOUNT, STAT, LIST and READ,
+and the VOLUME group provides QUERY. File contents and directories are read
+through `native/apfs_v2_reader.c`; hosted mounting also checks the source-owned
+checkpoint/spaceman summary in `native/apfs_native.c`.
 
-- Common V2 CORE probe, mount, unmount: implemented and regression tested
-- Common V2 VOLUME query: implemented and regression tested
-- Common V2 file stat, directory enumeration, path traversal and file reads:
-  **not implemented**
-- Free-standing ELF/UEFI profile and embedded `.infiltrator_boot` payload:
-  **not implemented**
-- BOOT production validator: expected rejection for this hosted-only artifact
-- OVMF kernel/initramfs read through APFS.so: **not qualified**
+The same portable APFS reader and probe are compiled into a no-import,
+freestanding ELF by `module/firmware`, embedded byte-for-byte into the
+canonical hosted carrier as `.infiltrator_boot`. The firmware descriptor
+uses the Common V2 CORE group with read-only session handles, not Linux VFS,
+FUSE, a Linux kernel filesystem module or an independent substitute decoder.
 
-## Runtime ABI and packaging boundary
+### Actually supported APFS layout
 
-The installed APFS.so is built from the native on-disk analyser and
-`module/apfs_v2_probe.c`, with only the Common V2 exported entry point.
-The historical V1 worker and fixture interfaces are retained in a test-only
-shared library and are not installed. Package qualification explicitly rejects
-`.ko` and V1 runtime exports. Source of the original Linux adapter remains in
-tree but is not shipped.
+The current firmware/host reader explicitly restricts itself to a
+checksum-valid, clean, unencrypted, single-volume checkpoint with supported
+flat root/leaf object-map and filesystem-catalogue B-trees. Path resolution
+uses native catalogue directory and inode keys; regular-file contents use
+on-disk extent records. Unsupported tree heights, encryption, snapshots,
+clones, compression, sparse/unmapped streams and unsupported features must
+fail closed. This is **not** comprehensive APFS coverage and must not be
+promoted by loosening a checksum, inventing a file, or replacing the reader
+with a Linux filesystem driver.
 
-The hosted-only CI pipeline deliberately does **not publish** a new firmware
-release. Before the module may be called BOOT-compatible, implement and test
-real Common V2 namespace reads through a freestanding shared engine, test
-valid/corrupt APFS images and nonmutation, and pass the unmodified production
-validator and OVMF Linux kernel/initramfs handoff.
+Source-owned catalogue corruption checks reject repeated exact parent/name
+directory keys and repeated inode keys, including conflicting records that
+still carry a valid APFS object checksum. The same reader is built into both
+runtime profiles. The independent `tests/test_apfs_v2_namespace.c` exercises
+its real Common V2 entry point with clean, deliberately malformed, and
+checksummed duplicate-key images, file/directory traversal, I/O failure
+propagation, rejection of unqualified writes, unmount-handle invalidation
+and no host-write callbacks.
 
-## 21 November 2026 — sector-aligned APFS probe repair
+## Qualification boundaries
 
-The Common V2 APFS NXSB probe now handles valid 8 KiB and larger logical
-sectors by using the canonical Common V2 byte-range host reader for both
-the 4 KiB prefix and the remainder of the on-disk block. It no longer
-issues illegal unaligned 4 KiB BlockIo reads against an 8 KiB sector or
-wrongly reports the filesystem missing solely for large host sectors.
-The production exported CORE.PROBE is tested with checksum-valid 8 KiB
-APFS NXSB media, a checksummed negative case with deliberate corruption,
-sector-aligned host callbacks, and a byte-for-byte nonmutation assertion.
-This fixes the probe only: APFS namespace, freestanding ELF and real BOOT
-validator/OVMF kernel reads remain incomplete.
+- Hosted and freestanding compilation, the exact embedded ELF byte comparison
+  and disposable Common V2 image tests are separate gates. The hosted module
+  and its native RUN/portable DEB are checked as installed carriers.
+- The current workflow additionally probes independently formatted APFS
+  containers, but the deliberately restricted flat-catalogue namespace test
+  does **not** establish support for arbitrary real-world APFS datasets.
+- No current production BOOT V2 validator result exists because BOOT itself
+  is not yet Common V2-capable. An earlier validator report must not be
+  relabelled as current V2 acceptance.
+- A disposable OVMF boot reading the actual kernel and initramfs via the
+  packaged APFS.so has not been qualified. No firmware-compatible release
+  designation follows from a successful test compile.
+- No writable mounting, recovery, formatting or filesystem-specific `.ko`
+  substitution is claimed. Historical workers and fixture APIs are
+  non-installed, test-only source; no V1 runtime ABI is exported.
 
-## 21 November 2026 — checksum-valid NXSB identity rejection
+### Pending exact-head result
 
-The hosted Common V2 probe now rejects an NX superblock whose physical
-object ID is not the NX root object, whose transaction ID is zero or whose
-container UUID is all zeros, even when its complete Fletcher checksum is
-valid. Production CORE.PROBE regression tests use tampered checksummed
-media for the missing UUID and transaction ID cases. This does not add
-any APFS file namespace or firmware export.
+The 22 November duplicate-key repairs are committed to `main` in
+`530b711`, `2b85b7a`, `7756b3d` and `654865c`. Their GitHub Actions
+completion must be checked before marking this revision qualified or issuing
+a new release. No BOOT repository, physical disk, ESP or firmware settings
+were modified.
