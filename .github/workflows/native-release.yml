@@ -58,6 +58,19 @@ jobs:
           for profile in portable native-root; do
             bash tests/container-media.sh "$RUNNER_TEMP/apfs-probe" "$RUNNER_TEMP/$profile/System/Filesystems/APFS.so"
           done
+      - name: Verify exact embedded APFS V2 firmware ELF from each packaged installer
+        run: |
+          set -euo pipefail
+          check="$RUNNER_TEMP/apfs-firmware-verify"
+          cmake -S . -B "$check" -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$check" --target apfs-firmware-v2-namespace-test apfs-firmware --parallel 2
+          for root in portable native-root; do
+            carrier="$RUNNER_TEMP/$root/System/Filesystems/APFS.so"
+            payload="$RUNNER_TEMP/$root-firmware.so"
+            objcopy --dump-section ".infiltrator_boot=$payload" "$carrier"
+            cmp -- "$payload" "$check/firmware/APFS.so"
+            "$check/apfs-firmware-v2-namespace-test" "$payload"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: APFS-hosted-v2-qualification-only-not-a-BOOT-release
