@@ -138,9 +138,18 @@ static int make_image(int duplicate_name,int duplicate_inode)
         entries[count++]=entries[4];
     return node(disk+13u*BLOCK,300u,2u,14u,entries,count,0);
 }
+static const IfsFsCoreOpsV2 *unmount_during_read;
+static void *active_volume;
+static int observed_unmount;
 static int read_at(void *context,uint64_t pos,void *dst,uint32_t n)
 {
     Context *c=context;
+    if (unmount_during_read) {
+        const IfsFsCoreOpsV2 *ops=unmount_during_read;
+        unmount_during_read=NULL;
+        observed_unmount=ops->unmount(active_volume);
+        if (observed_unmount!=IFS_FS_BUSY) return -1;
+    }
     if(c->fail || !dst || !n || pos%512u || n%512u ||
        n>8192u || pos>sizeof(disk) || n>sizeof(disk)-pos)
         return -1;
@@ -231,9 +240,13 @@ int main(int argc,char **argv)
     CHECK(core->stat(mount,"/boot/kernel.bin",&short_entry)==IFS_FS_NO_SPACE &&
           !memcmp(small,"XXXX",4));
     char readback[sizeof(payload)]={0};
+    active_volume=mount;
+    unmount_during_read=core;
+    observed_unmount=IFS_FS_INVALID;
     CHECK(core->read(mount,"/boot/kernel.bin",0u,readback,
                      sizeof(payload)-1u)==IFS_FS_OK &&
           !memcmp(readback,payload,sizeof(payload)-1u));
+    CHECK(!unmount_during_read && observed_unmount==IFS_FS_BUSY);
     memset(readback,0,sizeof(readback));
     CHECK(core->read(mount,"/boot/kernel.bin",5u,readback,9u)==IFS_FS_OK &&
           !memcmp(readback,payload+5u,9u));

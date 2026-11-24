@@ -7,6 +7,23 @@
 #include "apfs_disk.h"
 #include "apfs_v2_reader.h"
 #include <stdint.h>
+#include <stdatomic.h>
+
+/* Protect the native reader and session registry against concurrent and
+ * reentrant host callbacks. Return BUSY rather than waiting inside host
+ * I/O or freeing a live reader. This is an exclusion gate, not a claim
+ * of parallel I/O across mounted volumes. */
+static atomic_flag operation_gate=ATOMIC_FLAG_INIT;
+static int enter_operation(void)
+{
+    return !atomic_flag_test_and_set_explicit(&operation_gate,memory_order_acquire);
+}
+static int leave_operation(int rc)
+{
+    atomic_flag_clear_explicit(&operation_gate,memory_order_release);
+    return rc;
+}
+
 #include <string.h>
 /* The host-backed mount invokes the same complete checkpoint, spaceman
  * and catalogue validator used by the APFS native engine. The mounted state
@@ -62,7 +79,7 @@ static int volume_fill(const MountedApfs *volume, IfsFsVolumeInfoV2 *info)
     return IFS_FS_OK;
 }
 
-static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
+static int native_mount_impl(const IfsFsHostRuntimeV2 *host, void **output,
                         IfsFsVolumeInfoV2 *info)
 {
     MountedApfs *volume;
@@ -129,8 +146,14 @@ static int native_mount(const IfsFsHostRuntimeV2 *host, void **output,
     *output=(void *)token;
     return IFS_FS_OK;
 }
+static int native_mount(const IfsFsHostRuntimeV2 *host, void **output, IfsFsVolumeInfoV2 *info)
+{
+    if (output) *output=NULL;
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(native_mount_impl(host,output,info));
+}
 
-static int native_unmount(void *handle)
+static int native_unmount_impl(void *handle)
 {
     MountedApfs *volume=find_session(handle);
     if (!mounted_valid(volume)) return IFS_FS_INVALID;
@@ -147,10 +170,20 @@ static int native_unmount(void *handle)
     host.release(host.context, volume);
     return IFS_FS_OK;
 }
+static int native_unmount(void *handle)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(native_unmount_impl(handle));
+}
 
-static int volume_query(void *handle, IfsFsVolumeInfoV2 *info)
+static int volume_query_impl(void *handle, IfsFsVolumeInfoV2 *info)
 {
     return volume_fill(find_session(handle), info);
+}
+static int volume_query(void *handle,IfsFsVolumeInfoV2 *info)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(volume_query_impl(handle,info));
 }
 
 static const IfsFsVolumeOpsV2 volume_ops = {
@@ -159,20 +192,35 @@ static const IfsFsVolumeOpsV2 volume_ops = {
     .query = volume_query
 };
 
-static int native_stat(void *handle,const char *path,IfsFsEntryV2 *entry)
+static int native_stat_impl(void *handle,const char *path,IfsFsEntryV2 *entry)
 {
     MountedApfs *v=find_session(handle);
     return v ? ifs_apfs_reader_stat(v->reader,path,entry):IFS_FS_INVALID;
 }
-static int native_list(void *handle,const char *path,uint32_t index,IfsFsEntryV2 *entry)
+static int native_stat(void *handle,const char *path,IfsFsEntryV2 *entry)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(native_stat_impl(handle,path,entry));
+}
+static int native_list_impl(void *handle,const char *path,uint32_t index,IfsFsEntryV2 *entry)
 {
     MountedApfs *v=find_session(handle);
     return v ? ifs_apfs_reader_list(v->reader,path,index,entry):IFS_FS_INVALID;
 }
-static int native_read(void *handle,const char *path,uint64_t at,void *data,uint32_t bytes)
+static int native_list(void *handle,const char *path,uint32_t index,IfsFsEntryV2 *entry)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(native_list_impl(handle,path,index,entry));
+}
+static int native_read_impl(void *handle,const char *path,uint64_t at,void *data,uint32_t bytes)
 {
     MountedApfs *v=find_session(handle);
     return v ? ifs_apfs_reader_read(v->reader,path,at,data,bytes):IFS_FS_INVALID;
+}
+static int native_read(void *handle,const char *path,uint64_t offset,void *data,uint32_t length)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(native_read_impl(handle,path,offset,data,length));
 }
 static const IfsFsCoreOpsV2 core = {
     .header = { IFS_FS_GROUP_ABI_V2, sizeof(IfsFsCoreOpsV2),

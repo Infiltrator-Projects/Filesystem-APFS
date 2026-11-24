@@ -5,6 +5,23 @@
 #include "apfs_v2_reader.h"
 #include "apfs_disk.h"
 #include <stdint.h>
+#include <stdatomic.h>
+
+/* Protect the native reader and session registry against concurrent and
+ * reentrant host callbacks. Return BUSY rather than waiting inside host
+ * I/O or freeing a live reader. This is an exclusion gate, not a claim
+ * of parallel I/O across mounted volumes. */
+static atomic_flag operation_gate=ATOMIC_FLAG_INIT;
+static int enter_operation(void)
+{
+    return !atomic_flag_test_and_set_explicit(&operation_gate,memory_order_acquire);
+}
+static int leave_operation(int rc)
+{
+    atomic_flag_clear_explicit(&operation_gate,memory_order_release);
+    return rc;
+}
+
 #include <stddef.h>
 
 enum { MAX_SESSIONS = 32 };
@@ -18,7 +35,7 @@ static IfsApfsReader *find_reader(void *volume)
         if(sessions[i].token==id)return sessions[i].reader;
     return NULL;
 }
-static int mount(const IfsFsHostRuntimeV2 *host,void **output,IfsFsVolumeInfoV2 *info)
+static int mount_impl(const IfsFsHostRuntimeV2 *host,void **output,IfsFsVolumeInfoV2 *info)
 {
     if(!output || !info || info->structure_bytes<sizeof(*info) ||
        !ifs_fs_host_v2_valid(host))return IFS_FS_INVALID;
@@ -39,7 +56,13 @@ static int mount(const IfsFsHostRuntimeV2 *host,void **output,IfsFsVolumeInfoV2 
     *output=(void *)token;
     return IFS_FS_OK;
 }
-static int unmount(void *volume)
+static int mount(const IfsFsHostRuntimeV2 *host, void **output, IfsFsVolumeInfoV2 *info)
+{
+    if (output) *output=NULL;
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(mount_impl(host,output,info));
+}
+static int unmount_impl(void *volume)
 {
     uintptr_t id=(uintptr_t)volume;
     for(unsigned i=0;i<MAX_SESSIONS;++i){
@@ -52,20 +75,40 @@ static int unmount(void *volume)
     }
     return IFS_FS_INVALID;
 }
-static int stat_path(void *volume,const char *path,IfsFsEntryV2 *entry)
+static int unmount(void *handle)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(unmount_impl(handle));
+}
+static int stat_path_impl(void *volume,const char *path,IfsFsEntryV2 *entry)
 {
     IfsApfsReader *r=find_reader(volume);
     return r?ifs_apfs_reader_stat(r,path,entry):IFS_FS_INVALID;
 }
-static int list_path(void *volume,const char *path,uint32_t index,IfsFsEntryV2 *entry)
+static int stat_path(void *handle,const char *path,IfsFsEntryV2 *entry)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(stat_path_impl(handle,path,entry));
+}
+static int list_path_impl(void *volume,const char *path,uint32_t index,IfsFsEntryV2 *entry)
 {
     IfsApfsReader *r=find_reader(volume);
     return r?ifs_apfs_reader_list(r,path,index,entry):IFS_FS_INVALID;
 }
-static int read_file(void *volume,const char *path,uint64_t offset,void *data,uint32_t n)
+static int list_path(void *handle,const char *path,uint32_t index,IfsFsEntryV2 *entry)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(list_path_impl(handle,path,index,entry));
+}
+static int read_file_impl(void *volume,const char *path,uint64_t offset,void *data,uint32_t n)
 {
     IfsApfsReader *r=find_reader(volume);
     return r?ifs_apfs_reader_read(r,path,offset,data,n):IFS_FS_INVALID;
+}
+static int read_file(void *handle,const char *path,uint64_t offset,void *data,uint32_t length)
+{
+    if (!enter_operation()) return IFS_FS_BUSY;
+    return leave_operation(read_file_impl(handle,path,offset,data,length));
 }
 static const IfsFsCoreOpsV2 core = {
     .header={IFS_FS_GROUP_ABI_V2,sizeof(IfsFsCoreOpsV2),IFS_FS_GROUP_CORE,0u,
