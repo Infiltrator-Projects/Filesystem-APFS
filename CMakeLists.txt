@@ -60,6 +60,11 @@ target_link_options(apfs-driver PRIVATE
 target_link_libraries(apfs-driver PRIVATE InfiltratrCommon::Common OpenSSL::Crypto)
 
 if(BUILD_TESTING)
+  add_executable(apfs-native-format-test tests/test_format.c)
+  target_include_directories(apfs-native-format-test PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
+  target_link_libraries(apfs-native-format-test PRIVATE ${CMAKE_DL_LIBS})
+  target_compile_options(apfs-native-format-test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME apfs-native-format COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/tests/format_media.sh" "$<TARGET_FILE:apfs-native-format-test>" "$<TARGET_FILE:apfs-driver>")
   add_executable(apfs-container-media tests/test_container_media.c)
   target_include_directories(apfs-container-media PRIVATE "${infiltratr_common_SOURCE_DIR}/include")
   target_compile_options(apfs-container-media PRIVATE -Wall -Wextra -Wpedantic -Werror)

@@ -47,7 +47,7 @@ int main(void) {
     const IfsFsVolumeOpsV2 *volume_ops = (const void *)
         ifs_fs_group_v2(api, IFS_FS_GROUP_VOLUME);
     CHECK(volume_ops && volume_ops->query &&
-          volume_ops->header.capabilities == IFS_FS_VOLUME_QUERY);
+          volume_ops->header.capabilities == (IFS_FS_VOLUME_QUERY|IFS_FS_VOLUME_FORMAT) && volume_ops->format);
     /* These are opaque tokens, not dereferenceable allocator addresses.
      * Before the registry repair this would access arbitrary memory. */
     IfsFsVolumeInfoV2 bogus_info={.structure_bytes=sizeof(bogus_info)};

@@ -55,7 +55,9 @@ jobs:
           git clone -q https://github.com/Infiltrator-Projects/Libraries "$work"
           git -C "$work" checkout -q d23a52693fd3212368d327e1c1302e07ae9510ec
           cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror -I"$work/include" tests/test_container_media.c -ldl -o "$RUNNER_TEMP/apfs-probe"
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror -I"$work/include" tests/test_format.c -ldl -o "$RUNNER_TEMP/apfs-format"
           for profile in portable native-root; do
+            sh tests/format_media.sh "$RUNNER_TEMP/apfs-format" "$RUNNER_TEMP/$profile/System/Filesystems/APFS.so" "$(command -v apfsck)"
             bash tests/container-media.sh "$RUNNER_TEMP/apfs-probe" "$RUNNER_TEMP/$profile/System/Filesystems/APFS.so"
           done
       - name: Verify exact embedded APFS V2 firmware ELF from each packaged installer
