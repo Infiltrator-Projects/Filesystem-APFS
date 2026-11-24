@@ -382,7 +382,9 @@ static int format_apfs_impl(const IfsFsHostRuntimeV2 *h,uint32_t variant,
     node_begin(node,co+6u,F_PHYS,15u,80u,0u,0u);NODE(co+6u);
     node_begin(node,co+7u,F_PHYS,16u,80u,0u,0u);NODE(co+7u);
     fmt_object(raw,F_VOL,13u,0u);memcpy(raw+32,"APSB",4u);
-    f64(raw+40,2u);f64(raw+88,5u);f16(raw+96,5u);f32(raw+104,6u);
+    /* No optional hardlink-map feature: this profile matches the
+     * current reader's supported feature mask. */
+    f64(raw+88,5u);f16(raw+96,5u);f32(raw+104,6u);
     f16(raw+112,1u);f32(raw+116,2u);f32(raw+120,F_PHYS|2u);
     f32(raw+124,F_PHYS|2u);f64(raw+128,co+3u);f64(raw+136,F_CAT);
     f64(raw+144,co+6u);f64(raw+152,co+7u);f64(raw+176,16u);

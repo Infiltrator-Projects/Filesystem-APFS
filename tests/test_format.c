@@ -62,7 +62,9 @@ int main(int argc,char **argv)
     CHECK(vol->format(&h,3u,"NativeAPFS",0u)==IFS_FS_UNSUPPORTED);
     CHECK(vol->format(&h,variant,"Invalid/Name",0u)==IFS_FS_INVALID);
     CHECK(!m.writes);
-    CHECK(vol->format(&h,variant,"NativeAPFS",0u)==IFS_FS_OK);
+    int format_status=vol->format(&h,variant,"NativeAPFS",0u);
+    if(format_status!=IFS_FS_OK)fprintf(stderr,"format status: %d\n",format_status);
+    CHECK(format_status==IFS_FS_OK);
     uint32_t detected=0;void *mount=NULL;
     IfsFsVolumeInfoV2 info={.structure_bytes=sizeof(info)};
     char name[128];
