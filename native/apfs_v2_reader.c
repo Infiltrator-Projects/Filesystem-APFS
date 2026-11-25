@@ -68,6 +68,8 @@ static int read_block(IfsApfsReader *r,uint64_t addr,uint8_t *out)
     return ifs_fs_host_read_bytes_v2(
         &r->host,addr*(uint64_t)r->block_size,out,r->block_size);
 }
+static int validate_record_storage(IfsApfsReader *r,const uint8_t *b,
+                                   uint32_t n,int fixed);
 static int tree_load(IfsApfsReader *r,uint64_t addr,uint32_t subtype,int fixed,
                      uint8_t **out,uint32_t *count)
 {
@@ -91,6 +93,8 @@ static int tree_load(IfsApfsReader *r,uint64_t addr,uint32_t subtype,int fixed,
         release(r,b);return IFS_FS_CORRUPT;
     }
     if(level!=0u){release(r,b);return IFS_FS_UNSUPPORTED;}
+    rc=validate_record_storage(r,b,n,fixed);
+    if(rc!=IFS_FS_OK){release(r,b);return rc;}
     *out=b;*count=n;return IFS_FS_OK;
 }
 static int record_at(const uint8_t *b,uint32_t block_size,uint32_t records,
@@ -115,6 +119,37 @@ static int record_at(const uint8_t *b,uint32_t block_size,uint32_t records,
     out->key=b+k;out->key_len=(uint16_t)klen;
     out->value=b+v;out->value_len=(uint16_t)vlen;
     return IFS_FS_OK;
+}
+/* A checksum only authenticates the bytes against accidental damage; it
+ * does not establish that different TOC entries own distinct storage.
+ * Track occupied bytes in a compact bitmap, bounding validation work by
+ * the node size even for adversarial overlapping record lengths. */
+static int validate_record_storage(IfsApfsReader *r,const uint8_t *b,
+                                   uint32_t n,int fixed)
+{
+    const size_t bytes=((size_t)r->block_size+7u)/8u;
+    uint8_t *used=allocate(r,bytes);
+    if(!used)return IFS_FS_NO_MEMORY;
+    memset(used,0,bytes);
+    int rc=IFS_FS_OK;
+    for(uint32_t i=0u;i<n;++i) {
+        Record rec;
+        rc=record_at(b,r->block_size,n,i,fixed,&rec);
+        if(rc!=IFS_FS_OK)break;
+        const uint8_t *parts[]={rec.key,rec.value};
+        const uint32_t sizes[]={rec.key_len,rec.value_len};
+        for(unsigned p=0u;p<2u;++p) {
+            const size_t base=(size_t)(parts[p]-b);
+            for(size_t j=base;j<base+sizes[p];++j) {
+                const uint8_t bit=(uint8_t)(1u<<(j&7u));
+                if(used[j>>3u]&bit){rc=IFS_FS_CORRUPT;goto done;}
+                used[j>>3u]|=bit;
+            }
+        }
+    }
+done:
+    release(r,used);
+    return rc;
 }
 static int object_map(IfsApfsReader *r,uint64_t map_addr,
                       uint64_t oid,uint64_t xid,uint64_t *addr)

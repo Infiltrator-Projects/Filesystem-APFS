@@ -291,6 +291,18 @@ int main(int argc,char **argv)
     CHECK(core->stat(mount,"/boot/kernel.bin",&entry)==IFS_FS_CORRUPT);
     CHECK(core->read(mount,"/boot/kernel.bin",0u,readback,1u)==IFS_FS_CORRUPT);
     CHECK(core->unmount(mount)==IFS_FS_OK);
+    /* Distinct directory catalogue records cannot alias the same key or
+     * value bytes, even when each TOC entry is individually in range. */
+    CHECK(make_image(0,0)==0);
+    put16(disk+13u*BLOCK+64u,0u);
+    seal(disk+13u*BLOCK);
+    mount=NULL;
+    CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
+    CHECK(make_image(0,0)==0);
+    uint8_t *catalog=disk+13u*BLOCK;
+    put16(catalog+68u,(uint16_t)(catalog[60u]|((uint16_t)catalog[61u]<<8u)));
+    seal(catalog);
+    CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
     /* Checksummed object-map values cannot overlap the B-tree footer. */
     CHECK(make_image(0,0)==0);
     put16(disk+9u*BLOCK+58u,8u);
