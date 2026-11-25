@@ -16,4 +16,6 @@ int ifs_apfs_reader_list(IfsApfsReader *reader, const char *path, uint32_t index
                          IfsFsEntryV2 *entry);
 int ifs_apfs_reader_read(IfsApfsReader *reader, const char *path, uint64_t offset,
                          void *data, uint32_t bytes);
+int ifs_apfs_reader_map(IfsApfsReader *,const char *,uint64_t,
+                        IfsFsExtentV2 *,uint32_t,uint32_t *);
 #endif

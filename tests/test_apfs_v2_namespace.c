@@ -4,6 +4,7 @@
  * The test performs no writes to any real filesystem or BOOT installation.
  */
 #include <infiltratr/filesystem_module_v2.h>
+#include "apfs_v2_reader.h"
 #include "apfs_disk.h"
 #include <stdio.h>
 #include <stdint.h>
@@ -94,7 +95,7 @@ static void drec(Item *r,uint64_t parent,const char *name,uint64_t child,
     put64(r->value,child);put16(r->value+16u,flags);
 }
 static const char payload[]="APFS Common V2 kernel image: verified";
-static int make_image(int duplicate_name,int duplicate_inode)
+static int make_image(int duplicate_name,int duplicate_inode,int extent_case)
 {
     uint8_t *nx=disk;
     object(nx,1u,0x80000001u,0u);
@@ -133,6 +134,13 @@ static int make_image(int duplicate_name,int duplicate_inode)
     /* A duplicate fully checksummed directory key must be rejected during
      * the real Common V2 pathname traversal, not silently choose a child. */
     unsigned count=6u;
+    if(extent_case) {
+        entries[6]=entries[5];
+        put64(entries[4].value+100u,BLOCK+13u);
+        put64(entries[6].key+8u,extent_case==2?0u:BLOCK);
+        put64(entries[6].value+8u,extent_case==3?20u:24u);
+        ++count;
+    }
     if(duplicate_name)
         drec(&entries[count++],3u,"kernel.bin",4u,8u);
     if(duplicate_inode)
@@ -169,7 +177,7 @@ extern const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void);
 int main(int argc,char **argv)
 {
     CHECK(argc==1 || argc==2);
-    CHECK(make_image(0,0)==0);
+    CHECK(make_image(0,0,0)==0);
     /* The production firmware ELF can be supplied as argv[1]. Resolve its
      * exact Common V2 entry point rather than testing only linked source. */
     void *image=NULL;
@@ -205,6 +213,28 @@ int main(int argc,char **argv)
     host.context=&context;
     host.read_at=read_at;host.allocate=alloc;host.release=release;
     CHECK(ifs_fs_host_v2_valid(&host));
+    /* Shared native catalogue implementation: real logical extent paging,
+     * EOF clipping, and rejection of overlapping logical/physical ranges. */
+    for(int mode=1;mode<=3;++mode) {
+        CHECK(make_image(0,0,mode)==0);
+        IfsApfsReader *r=NULL;
+        uint32_t block=0u,count=99u;
+        uint64_t total=0u;
+        IfsFsExtentV2 e={0};
+        CHECK(ifs_apfs_reader_open(&host,&r,&block,&total)==IFS_FS_OK && r);
+        int rc=ifs_apfs_reader_map(r,"/boot/kernel.bin",0u,&e,1u,&count);
+        if(mode==1) {
+            CHECK(rc==IFS_FS_OK && count==1u && e.logical_offset==0u &&
+                  e.physical_offset==20u*BLOCK && e.length==BLOCK);
+            CHECK(ifs_apfs_reader_map(r,"/boot/kernel.bin",1u,&e,1u,&count)==IFS_FS_OK &&
+                  count==1u && e.logical_offset==BLOCK && e.physical_offset==24u*BLOCK &&
+                  e.length==13u);
+            CHECK(ifs_apfs_reader_map(r,"/boot/kernel.bin",2u,&e,1u,&count)==IFS_FS_END &&
+                  count==0u);
+        } else CHECK(rc==IFS_FS_CORRUPT && count==0u);
+        ifs_apfs_reader_close(r);
+    }
+    CHECK(make_image(0,0,0)==0);
     uint32_t variant=0u;
     CHECK(core->probe(&host,&variant)==IFS_FS_OK && variant==1u);
     IfsFsHostRuntimeV2 writable=host;
@@ -277,7 +307,7 @@ int main(int argc,char **argv)
     disk[13u*BLOCK+2048u]^=1u;
     info.structure_bytes=sizeof(info);mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
-    CHECK(make_image(1,0)==0);
+    CHECK(make_image(1,0,0)==0);
     info.structure_bytes=sizeof(info);mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_OK && mount);
     CHECK(core->stat(mount,"/boot/kernel.bin",&entry)==IFS_FS_CORRUPT);
@@ -285,7 +315,7 @@ int main(int argc,char **argv)
     CHECK(core->unmount(mount)==IFS_FS_OK);
     /* A second checksummed inode key must fail independently of duplicate
      * directory entries, through the production Common V2 read path. */
-    CHECK(make_image(0,1)==0);
+    CHECK(make_image(0,1,0)==0);
     info.structure_bytes=sizeof(info);mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_OK && mount);
     CHECK(core->stat(mount,"/boot/kernel.bin",&entry)==IFS_FS_CORRUPT);
@@ -293,25 +323,25 @@ int main(int argc,char **argv)
     CHECK(core->unmount(mount)==IFS_FS_OK);
     /* Distinct directory catalogue records cannot alias the same key or
      * value bytes, even when each TOC entry is individually in range. */
-    CHECK(make_image(0,0)==0);
+    CHECK(make_image(0,0,0)==0);
     put16(disk+13u*BLOCK+64u,0u);
     seal(disk+13u*BLOCK);
     mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
-    CHECK(make_image(0,0)==0);
+    CHECK(make_image(0,0,0)==0);
     uint8_t *catalog=disk+13u*BLOCK;
     put16(catalog+68u,(uint16_t)(catalog[60u]|((uint16_t)catalog[61u]<<8u)));
     seal(catalog);
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
     /* Checksummed object-map values cannot overlap the B-tree footer. */
-    CHECK(make_image(0,0)==0);
+    CHECK(make_image(0,0,0)==0);
     put16(disk+9u*BLOCK+58u,8u);
     seal(disk+9u*BLOCK);
     mount=NULL;
     CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
     /* Two mappings for exactly the same object and transaction are
      * ambiguous, even if they happen to point to the same physical block. */
-    CHECK(make_image(0,0)==0);
+    CHECK(make_image(0,0,0)==0);
     Item duplicates[2]={0};
     duplicates[0].key_n=16u;duplicates[0].value_n=16u;
     put64(duplicates[0].key,100u);put64(duplicates[0].key+8u,XID);

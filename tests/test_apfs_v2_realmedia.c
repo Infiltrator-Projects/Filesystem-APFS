@@ -175,6 +175,12 @@ int main(void)
     CHECK(core && volume && core->probe && core->mount && core->unmount &&
           core->stat && core->directory_entry && core->read &&
           !core->write && volume->query);
+    const IfsFsDefragOpsV2 *defrag=(const void *)ifs_fs_group_v2(api,IFS_FS_GROUP_DEFRAG);
+    CHECK(defrag && defrag->header.capabilities==IFS_FS_DEFRAG_MAP && defrag->map);
+    IfsFsExtentV2 extent={0};
+    uint32_t extent_count=99u;
+    CHECK(defrag->map((void *)(uintptr_t)1u,"/missing",0u,&extent,1u,&extent_count)==IFS_FS_INVALID &&
+          extent_count==0u);
     IfsFsHostRuntimeV2 host=test_host(&media);
     CHECK(ifs_fs_host_v2_valid(&host));
     const uint64_t original_hash=disk_hash(&media);
@@ -193,6 +199,10 @@ int main(void)
           root.type==IFS_FS_ENTRY_DIRECTORY && !strcmp(name,"/"));
     CHECK(core->directory_entry(mounted,"/",0u,&root)==IFS_FS_END);
     CHECK(core->stat(mounted,"/missing",&root)==IFS_FS_NOT_FOUND);
+    CHECK(defrag->map(mounted,"/missing",0u,&extent,1u,&extent_count)==IFS_FS_NOT_FOUND &&
+          extent_count==0u);
+    CHECK(defrag->map(mounted,"/",0u,&extent,1u,&extent_count)==IFS_FS_UNSUPPORTED &&
+          extent_count==0u);
     IfsFsVolumeInfoV2 queried={.structure_bytes=sizeof(queried)};
     CHECK(volume->query(mounted,&queried)==IFS_FS_OK &&
           queried.total_bytes==info.total_bytes);

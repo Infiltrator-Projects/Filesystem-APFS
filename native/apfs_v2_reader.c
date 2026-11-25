@@ -461,6 +461,98 @@ int ifs_apfs_reader_list(IfsApfsReader *r,const char *path,uint32_t index,
     }
     return IFS_FS_END;
 }
+/* Decode only extent records belonging to this inode's private stream.
+ * Match the same plain, non-sparse geometry accepted by CORE.READ. A
+ * malformed record for this stream is corruption, never an absent extent. */
+static int stream_extent(IfsApfsReader *r,uint32_t index,uint64_t stream,
+                         IfsFsExtentV2 *out)
+{
+    Record rec;
+    int rc=record_at(r->catalog,r->block_size,r->records,index,0,&rec);
+    if(rc!=IFS_FS_OK)return rc;
+    if(rec.key_len<8u || LE64(rec.key)>>60u!=APFS_KEY_EXTENT ||
+       (LE64(rec.key)&APFS_KEY_ID_MASK)!=stream)return IFS_FS_NOT_FOUND;
+    if(rec.key_len!=16u || rec.value_len!=24u)return IFS_FS_CORRUPT;
+    uint64_t logical=LE64(rec.key+8u),len_flags=LE64(rec.value);
+    uint64_t length=len_flags&UINT64_C(0x00ffffffffffffff);
+    uint64_t physical=LE64(rec.value+8u);
+    if(!length || logical%r->block_size || length%r->block_size ||
+       logical>UINT64_MAX-length || physical>=r->blocks ||
+       length/r->block_size>r->blocks-physical ||
+       physical>UINT64_MAX/r->block_size)return IFS_FS_CORRUPT;
+    if(len_flags>>56u || LE64(rec.value+16u))return IFS_FS_UNSUPPORTED;
+    *out=(IfsFsExtentV2){.logical_offset=logical,
+        .physical_offset=physical*(uint64_t)r->block_size,.length=length};
+    if(out->physical_offset>UINT64_MAX-length)return IFS_FS_CORRUPT;
+    return IFS_FS_OK;
+}
+
+/* Enumerate actual native data extents in logical order, clipping only the
+ * last allocation to EOF. Validate the entire stream before returning any
+ * page, including duplicates, overlapping allocation and unmapped holes.
+ * The reader's supported flat catalogue bounds this operation; no host
+ * filesystem or synthetic allocator is involved. */
+int ifs_apfs_reader_map(IfsApfsReader *r,const char *path,uint64_t first,
+                         IfsFsExtentV2 *out,uint32_t capacity,uint32_t *written)
+{
+    if(!written)return IFS_FS_INVALID;
+    *written=0u;
+    if(!r || !out || !capacity)return IFS_FS_INVALID;
+    uint64_t oid;const char *base;uint32_t base_bytes;Inode file;
+    int rc=locate(r,path,&oid,&base,&base_bytes,&file);
+    if(rc!=IFS_FS_OK)return rc;
+    if(file.type!=IFS_FS_ENTRY_FILE)return IFS_FS_UNSUPPORTED;
+    if(!r->records)return file.size?IFS_FS_CORRUPT:IFS_FS_END;
+    IfsFsExtentV2 *all=allocate(r,(size_t)r->records*sizeof(*all));
+    if(!all)return IFS_FS_NO_MEMORY;
+    uint32_t count=0u;
+    for(uint32_t i=0u;i<r->records;++i) {
+        IfsFsExtentV2 e={0};
+        rc=stream_extent(r,i,file.private_id,&e);
+        if(rc==IFS_FS_NOT_FOUND)continue;
+        if(rc!=IFS_FS_OK)goto done;
+        if(e.logical_offset>=file.size){rc=IFS_FS_CORRUPT;goto done;}
+        for(uint32_t j=0u;j<count;++j) {
+            const IfsFsExtentV2 *old=&all[j];
+            if((e.logical_offset<old->logical_offset+old->length &&
+                old->logical_offset<e.logical_offset+e.length) ||
+               (e.physical_offset<old->physical_offset+old->length &&
+                old->physical_offset<e.physical_offset+e.length)) {
+                rc=IFS_FS_CORRUPT;goto done;
+            }
+        }
+        uint32_t at=count;
+        while(at && all[at-1u].logical_offset>e.logical_offset) {
+            all[at]=all[at-1u];--at;
+        }
+        all[at]=e;++count;
+    }
+    uint64_t logical=0u;
+    for(uint32_t i=0u;i<count;++i) {
+        IfsFsExtentV2 *e=&all[i];
+        if(e->logical_offset!=logical || logical>=file.size) {
+            rc=IFS_FS_UNSUPPORTED;goto done;
+        }
+        if(e->length>file.size-logical) {
+            /* Allocation may extend past EOF only within its final block. */
+            if(e->length-(file.size-logical)>=r->block_size) {
+                rc=IFS_FS_UNSUPPORTED;goto done;
+            }
+            e->length=file.size-logical;
+        }
+        logical+=e->length;
+    }
+    if(logical!=file.size){rc=IFS_FS_UNSUPPORTED;goto done;}
+    if(first>=count){rc=IFS_FS_END;goto done;}
+    uint32_t n=count-(uint32_t)first;
+    if(n>capacity)n=capacity;
+    memcpy(out,all+(uint32_t)first,(size_t)n*sizeof(*out));
+    *written=n;rc=IFS_FS_OK;
+done:
+    release(r,all);
+    return rc;
+}
+
 int ifs_apfs_reader_read(IfsApfsReader *r,const char *path,uint64_t offset,
                           void *data,uint32_t bytes)
 {

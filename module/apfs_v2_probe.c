@@ -501,6 +501,23 @@ static int native_read(void *handle,const char *path,uint64_t offset,void *data,
     if (!enter_operation()) return IFS_FS_BUSY;
     return leave_operation(native_read_impl(handle,path,offset,data,length));
 }
+/* Hosted extent mapping uses the validated native catalogue. No relocation
+ * or write capability is advertised until an APFS CoW writer is qualified. */
+static int native_map(void *handle,const char *path,uint64_t first,
+                      IfsFsExtentV2 *out,uint32_t capacity,uint32_t *written)
+{
+    if(!written)return IFS_FS_INVALID;
+    *written=0u;
+    if(!enter_operation())return IFS_FS_BUSY;
+    MountedApfs *v=find_session(handle);
+    return leave_operation(v?ifs_apfs_reader_map(v->reader,path,first,out,
+                            capacity,written):IFS_FS_INVALID);
+}
+static const IfsFsDefragOpsV2 defrag_ops={
+    .header={IFS_FS_GROUP_ABI_V2,sizeof(defrag_ops),IFS_FS_GROUP_DEFRAG,0u,
+             IFS_FS_DEFRAG_MAP},
+    .map=native_map
+};
 static const IfsFsCoreOpsV2 core = {
     .header = { IFS_FS_GROUP_ABI_V2, sizeof(IfsFsCoreOpsV2),
                 IFS_FS_GROUP_CORE, 0, IFS_FS_CORE_PROBE | IFS_FS_CORE_MOUNT |
@@ -518,12 +535,14 @@ static const IfsFsGroupHeaderV2 *query(uint32_t id, uint32_t lo, uint32_t hi) {
     if (id == IFS_FS_GROUP_CORE) return &core.header;
     if (id == IFS_FS_GROUP_VOLUME) return &volume_ops.header;
     if (id == IFS_FS_GROUP_METADATA) return &metadata_ops.header;
+    if (id == IFS_FS_GROUP_DEFRAG) return &defrag_ops.header;
     return NULL;
 }
 static const IfsFsModuleApiV2 api = {
     IFS_FS_COMMON_ABI_V2, sizeof(IfsFsModuleApiV2), "apfs",
     IFS_FS_PROFILE_HOSTED, IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE) |
-        IFS_FS_GROUP_BIT(IFS_FS_GROUP_VOLUME)|IFS_FS_GROUP_BIT(IFS_FS_GROUP_METADATA), query
+        IFS_FS_GROUP_BIT(IFS_FS_GROUP_VOLUME)|IFS_FS_GROUP_BIT(IFS_FS_GROUP_METADATA)|
+        IFS_FS_GROUP_BIT(IFS_FS_GROUP_DEFRAG), query
 };
 __attribute__((visibility("default")))
 const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void) { return &api; }

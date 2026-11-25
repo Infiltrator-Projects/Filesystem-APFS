@@ -44,6 +44,8 @@ int main(void) {
     const IfsFsCoreOpsV2 *core = (const void *)ifs_fs_group_v2(api, IFS_FS_GROUP_CORE);
     CHECK(core && core->probe && core->mount && core->unmount &&
           core->stat && core->directory_entry && core->read && !core->write);
+    const IfsFsDefragOpsV2 *defrag=(const void *)ifs_fs_group_v2(api,IFS_FS_GROUP_DEFRAG);
+    CHECK(defrag && defrag->header.capabilities==IFS_FS_DEFRAG_MAP && defrag->map);
     const IfsFsVolumeOpsV2 *volume_ops = (const void *)
         ifs_fs_group_v2(api, IFS_FS_GROUP_VOLUME);
     CHECK(volume_ops && volume_ops->query &&
