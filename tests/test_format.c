@@ -73,6 +73,10 @@ int main(int argc,char **argv)
     CHECK(core->mount(&ro,&mount,&info)==IFS_FS_OK && mount);
     CHECK(info.variant==variant && info.total_bytes==m.bytes &&
           info.free_bytes>0u && info.free_bytes<m.bytes);
+    char label[257];
+    uint32_t label_bytes=0;
+    CHECK(vol->label && vol->label(mount,label,sizeof(label),&label_bytes)==IFS_FS_OK &&
+          label_bytes==10u && !strcmp(label,"NativeAPFS"));
     CHECK(core->stat(mount,"/",&entry)==IFS_FS_OK && entry.type==IFS_FS_ENTRY_DIRECTORY);
     CHECK(core->directory_entry(mount,"/",0u,&entry)==IFS_FS_END);
     CHECK(vol->format(&h,variant,"NativeAPFS",0u)==IFS_FS_BUSY);

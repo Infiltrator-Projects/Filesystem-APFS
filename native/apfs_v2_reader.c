@@ -44,13 +44,14 @@ typedef struct {
 } Record;
 typedef struct {
     uint64_t private_id, size, flags;
-    uint32_t type;
+    uint32_t type,mode,owner,group;
 } Inode;
 struct IfsApfsReader {
     IfsFsHostRuntimeV2 host;
     uint8_t *catalog;
     uint64_t blocks, xid;
     uint32_t block_size, records;
+    uint8_t label[256];
 };
 static void *allocate(IfsApfsReader *r,size_t n)
 {
@@ -230,7 +231,8 @@ static int inode_for(IfsApfsReader *r,uint64_t target,Inode *result)
            LE64(record.key)>>60u!=APFS_KEY_INODE)continue;
         if(record.value_len<92u)return IFS_FS_CORRUPT;
         const uint16_t mode=LE16(record.value+80u);
-        Inode f={LE64(record.value+8u),0u,LE64(record.value+48u),0u};
+        Inode f={.private_id=LE64(record.value+8u),.flags=LE64(record.value+48u),
+                 .mode=mode,.owner=LE32(record.value+72u),.group=LE32(record.value+76u)};
         if((mode&0170000u)==APFS_DIR_MODE)
             f.type=IFS_FS_ENTRY_DIRECTORY;
         else if((mode&0170000u)==APFS_REG_MODE)
@@ -344,6 +346,48 @@ static int entry_fill(const Inode *node,const char *name,uint32_t n,
     entry->type=node->type;
     entry->size_bytes=node->size;
     entry->attributes=0u;
+    return IFS_FS_OK;
+}
+/* The catalogue inode's POSIX fields are authoritative. Preserve the
+ * native type and permission bits; do not substitute host ownership. */
+int ifs_apfs_reader_metadata(IfsApfsReader *r,const char *path,IfsFsMetadataV2 *out)
+{
+    if(!r || !out || out->structure_bytes<sizeof(*out))return IFS_FS_INVALID;
+    uint64_t oid;const char *base;uint32_t n;Inode inode;
+    int rc=locate(r,path,&oid,&base,&n,&inode);
+    if(rc!=IFS_FS_OK)return rc;
+    *out=(IfsFsMetadataV2){.structure_bytes=sizeof(*out),.mask=IFS_FS_META_GET_MODE,
+        .mode=inode.mode,.owner=inode.owner,.group=inode.group};
+    return IFS_FS_OK;
+}
+/* APFS volume names are NUL-terminated UTF-8. Validate shortest form,
+ * scalar range and surrogate exclusion before copying any bytes. */
+int ifs_apfs_reader_label(const IfsApfsReader *r,char *out,uint32_t cap,uint32_t *bytes)
+{
+    if(!bytes)return IFS_FS_INVALID;
+    *bytes=0u;
+    if(!r || !out || !cap)return IFS_FS_INVALID;
+    uint32_t n=0;
+    while(n<sizeof(r->label) && r->label[n])++n;
+    if(n==sizeof(r->label))return IFS_FS_CORRUPT;
+    for(uint32_t i=0;i<n;) {
+        uint32_t cp=r->label[i++],need=0,min=0;
+        if(cp<0x80u)continue;
+        if(cp>=0xc2u && cp<=0xdfu){cp&=31u;need=1;min=0x80u;}
+        else if(cp>=0xe0u && cp<=0xefu){cp&=15u;need=2;min=0x800u;}
+        else if(cp>=0xf0u && cp<=0xf4u){cp&=7u;need=3;min=0x10000u;}
+        else return IFS_FS_CORRUPT;
+        if(need>n-i)return IFS_FS_CORRUPT;
+        while(need--) {
+            uint32_t next=r->label[i++];
+            if((next&0xc0u)!=0x80u)return IFS_FS_CORRUPT;
+            cp=(cp<<6u)|(next&63u);
+        }
+        if(cp<min || cp>0x10ffffu || (cp>=0xd800u && cp<=0xdfffu))
+            return IFS_FS_CORRUPT;
+    }
+    if(n>=cap)return IFS_FS_NO_SPACE;
+    memcpy(out,r->label,n+1u);*bytes=n;
     return IFS_FS_OK;
 }
 int ifs_apfs_reader_stat(IfsApfsReader *r,const char *path,IfsFsEntryV2 *entry)
@@ -480,6 +524,9 @@ int ifs_apfs_reader_open(const IfsFsHostRuntimeV2 *host,IfsApfsReader **output,
        !(LE64(volume+264u)&APFS_FEATURE_UNENCRYPTED)){
         rc=IFS_FS_UNSUPPORTED;goto done;
     }
+    /* The volume name belongs to the selected, checksum-validated APSB,
+     * not the container superblock or an obsolete checkpoint. */
+    memcpy(r->label,volume+704u,sizeof(r->label));
     rc=object_map(r,LE64(volume+128u),LE64(volume+136u),r->xid,&root_at);
     if(rc!=IFS_FS_OK)goto done;
     rc=tree_load(r,root_at,APFS_OBJ_FSTREE,0,&r->catalog,&r->records);

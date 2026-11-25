@@ -446,10 +446,28 @@ static int format_volume(const IfsFsHostRuntimeV2 *h,uint32_t variant,
     return leave_operation(format_apfs_impl(h,variant,label,flags));
 }
 
+static int volume_label(void *handle,char *out,uint32_t cap,uint32_t *bytes)
+{
+    if(!bytes)return IFS_FS_INVALID;
+    *bytes=0u;
+    if(!enter_operation())return IFS_FS_BUSY;
+    MountedApfs *v=find_session(handle);
+    return leave_operation(v?ifs_apfs_reader_label(v->reader,out,cap,bytes):IFS_FS_INVALID);
+}
+static int metadata_get(void *handle,const char *path,IfsFsMetadataV2 *out)
+{
+    if(!enter_operation())return IFS_FS_BUSY;
+    MountedApfs *v=find_session(handle);
+    return leave_operation(v?ifs_apfs_reader_metadata(v->reader,path,out):IFS_FS_INVALID);
+}
+static const IfsFsMetadataOpsV2 metadata_ops={
+    .header={IFS_FS_GROUP_ABI_V2,sizeof(metadata_ops),IFS_FS_GROUP_METADATA,0u,IFS_FS_META_GET_MODE},
+    .get=metadata_get
+};
 static const IfsFsVolumeOpsV2 volume_ops = {
     .header = {IFS_FS_GROUP_ABI_V2, sizeof(IfsFsVolumeOpsV2),
-               IFS_FS_GROUP_VOLUME, 0u, IFS_FS_VOLUME_QUERY|IFS_FS_VOLUME_FORMAT},
-    .query = volume_query,
+               IFS_FS_GROUP_VOLUME, 0u, IFS_FS_VOLUME_QUERY|IFS_FS_VOLUME_FORMAT|IFS_FS_VOLUME_LABEL_GET},
+    .query = volume_query,.label=volume_label,
     .format = format_volume
 };
 
@@ -499,12 +517,13 @@ static const IfsFsGroupHeaderV2 *query(uint32_t id, uint32_t lo, uint32_t hi) {
         return NULL;
     if (id == IFS_FS_GROUP_CORE) return &core.header;
     if (id == IFS_FS_GROUP_VOLUME) return &volume_ops.header;
+    if (id == IFS_FS_GROUP_METADATA) return &metadata_ops.header;
     return NULL;
 }
 static const IfsFsModuleApiV2 api = {
     IFS_FS_COMMON_ABI_V2, sizeof(IfsFsModuleApiV2), "apfs",
     IFS_FS_PROFILE_HOSTED, IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE) |
-        IFS_FS_GROUP_BIT(IFS_FS_GROUP_VOLUME), query
+        IFS_FS_GROUP_BIT(IFS_FS_GROUP_VOLUME)|IFS_FS_GROUP_BIT(IFS_FS_GROUP_METADATA), query
 };
 __attribute__((visibility("default")))
 const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void) { return &api; }

@@ -79,6 +79,7 @@ static void inode(Item *r,uint64_t id,uint64_t stream,uint16_t mode)
     memset(r,0,sizeof(*r));
     r->key_n=8u;r->value_n=92u;
     put64(r->key,HEADER(id,3u));put64(r->value+8u,stream);
+    put32(r->value+72u,123456u);put32(r->value+76u,654321u);
     put16(r->value+80u,mode);
 }
 static void drec(Item *r,uint64_t parent,const char *name,uint64_t child,
@@ -111,7 +112,7 @@ static int make_image(int duplicate_name,int duplicate_inode)
     object(v,100u,13u,0u);
     memcpy(v+32u,"APSB",4u);
     put64(v+128u,11u);put64(v+136u,300u);
-    put64(v+264u,1u);seal(v);
+    put64(v+264u,1u);memcpy(v+704u,"Caf\xC3\xA9",5u);seal(v);
     Item entries[8]={0};
     inode(&entries[0],2u,2u,0040755u);
     drec(&entries[1],2u,"boot",3u,4u);
@@ -227,6 +228,20 @@ int main(int argc,char **argv)
     CHECK(core->stat(mount,"/boot/kernel.bin",&entry)==IFS_FS_OK &&
           entry.type==IFS_FS_ENTRY_FILE &&
           entry.size_bytes==sizeof(payload)-1u);
+    const IfsFsMetadataOpsV2 *meta=(const void *)ifs_fs_group_v2(api,IFS_FS_GROUP_METADATA);
+    const IfsFsVolumeOpsV2 *vol=(const void *)ifs_fs_group_v2(api,IFS_FS_GROUP_VOLUME);
+    IfsFsMetadataV2 metadata={.structure_bytes=sizeof(metadata)};
+    CHECK(meta && meta->get && !meta->set && meta->header.capabilities==IFS_FS_META_GET_MODE);
+    CHECK(meta->get(mount,"/boot/kernel.bin",&metadata)==IFS_FS_OK &&
+          metadata.mode==0100644u && metadata.owner==123456u && metadata.group==654321u);
+    CHECK(meta->get(mount,"/boot/missing.bin",&metadata)==IFS_FS_NOT_FOUND);
+    char label[257],tiny_label[2]={'X','X'};
+    uint32_t label_bytes=UINT32_MAX;
+    CHECK(vol && vol->label && !vol->set_label &&
+          vol->label(mount,label,sizeof(label),&label_bytes)==IFS_FS_OK &&
+          label_bytes==5u && !strcmp(label,"Caf\xC3\xA9"));
+    CHECK(vol->label(mount,tiny_label,sizeof(tiny_label),&label_bytes)==IFS_FS_NO_SPACE &&
+          !label_bytes && tiny_label[0]=='X' && tiny_label[1]=='X');
     CHECK(core->stat(mount,"/boot/missing.bin",&entry)==IFS_FS_NOT_FOUND);
     CHECK(core->directory_entry(mount,"/",0u,&entry)==IFS_FS_OK &&
           !strcmp(name,"boot"));

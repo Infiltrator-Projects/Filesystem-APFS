@@ -117,15 +117,43 @@ static const IfsFsCoreOpsV2 core = {
     .probe=apfs_v2_probe,.mount=mount,.unmount=unmount,
     .stat=stat_path,.directory_entry=list_path,.read=read_file
 };
+/* Freestanding metadata and label reads share the hosted native reader.
+ * No free-space estimate or write operations are advertised here. */
+static int volume_label(void *handle,char *out,uint32_t cap,uint32_t *bytes)
+{
+    if(!bytes)return IFS_FS_INVALID;
+    *bytes=0u;
+    if(!enter_operation())return IFS_FS_BUSY;
+    IfsApfsReader *r=find_reader(handle);
+    return leave_operation(r?ifs_apfs_reader_label(r,out,cap,bytes):IFS_FS_INVALID);
+}
+static int metadata_get(void *handle,const char *path,IfsFsMetadataV2 *out)
+{
+    if(!enter_operation())return IFS_FS_BUSY;
+    IfsApfsReader *r=find_reader(handle);
+    return leave_operation(r?ifs_apfs_reader_metadata(r,path,out):IFS_FS_INVALID);
+}
+static const IfsFsVolumeOpsV2 volume={
+    .header={IFS_FS_GROUP_ABI_V2,sizeof(volume),IFS_FS_GROUP_VOLUME,0u,IFS_FS_VOLUME_LABEL_GET},
+    .label=volume_label
+};
+static const IfsFsMetadataOpsV2 metadata_ops={
+    .header={IFS_FS_GROUP_ABI_V2,sizeof(metadata_ops),IFS_FS_GROUP_METADATA,0u,IFS_FS_META_GET_MODE},
+    .get=metadata_get
+};
 static const IfsFsGroupHeaderV2 *query(uint32_t id,uint32_t low,uint32_t high)
 {
-    return id==IFS_FS_GROUP_CORE && low<=IFS_FS_GROUP_ABI_V2 &&
-           high>=IFS_FS_GROUP_ABI_V2 ? &core.header:NULL;
+    if(low>IFS_FS_GROUP_ABI_V2 || high<IFS_FS_GROUP_ABI_V2)return NULL;
+    if(id==IFS_FS_GROUP_CORE)return &core.header;
+    if(id==IFS_FS_GROUP_VOLUME)return &volume.header;
+    if(id==IFS_FS_GROUP_METADATA)return &metadata_ops.header;
+    return NULL;
 }
 static const IfsFsModuleApiV2 api={
     IFS_FS_COMMON_ABI_V2,sizeof(IfsFsModuleApiV2),"apfs",
     IFS_FS_PROFILE_FREESTANDING|IFS_FS_PROFILE_FIRMWARE,
-    IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE),query
+    IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE)|IFS_FS_GROUP_BIT(IFS_FS_GROUP_VOLUME)|
+    IFS_FS_GROUP_BIT(IFS_FS_GROUP_METADATA),query
 };
 __attribute__((visibility("default")))
 const IfsFsModuleApiV2 *infiltrator_filesystem_api_v2(void){return &api;}
