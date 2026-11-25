@@ -107,8 +107,10 @@ static int record_at(const uint8_t *b,uint32_t block_size,uint32_t records,
     const uint32_t backwards=LE16(e+(fixed?2u:4u));
     if(backwards>value_base)return IFS_FS_CORRUPT;
     uint64_t v=value_base-backwards;
-    if(!klen||k>block_size||klen>block_size-k ||
-       v>block_size||vlen>block_size-v||k+klen>v)
+    /* Root-node values must end before the B-tree information footer,
+     * not merely before the end of the physical block. */
+    if(!klen||k>value_base||klen>value_base-k ||
+       v>value_base||vlen>value_base-v||k+klen>v)
         return IFS_FS_CORRUPT;
     out->key=b+k;out->key_len=(uint16_t)klen;
     out->value=b+v;out->value_len=(uint16_t)vlen;
@@ -142,7 +144,8 @@ static int object_map(IfsApfsReader *r,uint64_t map_addr,
         if((flags&5u)!=0u||size!=r->block_size||paddr>=r->blocks){
             rc=IFS_FS_UNSUPPORTED;break;
         }
-        if(!found||key_xid>=best){
+        if(found && key_xid==best){rc=IFS_FS_CORRUPT;break;}
+        if(!found||key_xid>best){
             found=1;best=key_xid;physical=paddr;
         }
     }

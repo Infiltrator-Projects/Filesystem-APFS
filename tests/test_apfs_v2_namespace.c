@@ -291,6 +291,22 @@ int main(int argc,char **argv)
     CHECK(core->stat(mount,"/boot/kernel.bin",&entry)==IFS_FS_CORRUPT);
     CHECK(core->read(mount,"/boot/kernel.bin",0u,readback,1u)==IFS_FS_CORRUPT);
     CHECK(core->unmount(mount)==IFS_FS_OK);
+    /* Checksummed object-map values cannot overlap the B-tree footer. */
+    CHECK(make_image(0,0)==0);
+    put16(disk+9u*BLOCK+58u,8u);
+    seal(disk+9u*BLOCK);
+    mount=NULL;
+    CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
+    /* Two mappings for exactly the same object and transaction are
+     * ambiguous, even if they happen to point to the same physical block. */
+    CHECK(make_image(0,0)==0);
+    Item duplicates[2]={0};
+    duplicates[0].key_n=16u;duplicates[0].value_n=16u;
+    put64(duplicates[0].key,100u);put64(duplicates[0].key+8u,XID);
+    put32(duplicates[0].value+4u,BLOCK);put64(duplicates[0].value+8u,10u);
+    duplicates[1]=duplicates[0];
+    CHECK(node(disk+9u*BLOCK,9u,0x40000002u,11u,duplicates,2u,1)==0);
+    CHECK(core->mount(&host,&mount,&info)==IFS_FS_CORRUPT && !mount);
     CHECK(!context.writes);
     CHECK(!image || dlclose(image)==0);
     puts("APFS-FREESTANDING-COMMON-V2-DIRECTORY-AND-KERNEL-READ-PASS");
