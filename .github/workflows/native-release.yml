@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# APFS is hosted V2 probe/mount only. Do not publish a BOOT-compatible
+# APFS hosted V2 supports read-only namespace and file extent mapping. Do not publish a BOOT-compatible
 # release until the same native engine passes Common V2 namespace reads,
 # production BOOT validation and disposable OVMF kernel/initramfs tests.
 name: Qualify APFS hosted V2 package without kernel fallback
@@ -111,4 +111,4 @@ jobs:
           fi
           gh release create "$tag" dist/*.deb dist/*.run --target "$GITHUB_SHA" \
             --title "APFS hosted Common V2 filesystem release $version" \
-            --notes "APFS Common V2-only hosted filesystem module and manual. Qualifies source-owned read-only APFS namespace subset and verified container probes; old public V1 and kernel-module assets are excluded. This is NOT a fully qualified BOOT release."
+            --notes "APFS Common V2-only hosted filesystem module and manual. Qualifies source-owned read-only APFS namespace, native file extent mapping and verified container probes; old public V1 and kernel-module assets are excluded. This is NOT a fully qualified BOOT release."
