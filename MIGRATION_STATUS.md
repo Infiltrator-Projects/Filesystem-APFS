@@ -5,7 +5,7 @@
 The only installed filesystem provider is `/System/Filesystems/APFS.so`,
 exporting `infiltrator_filesystem_api_v2`. Its hosted read-only Common V2
 CORE implementation provides PROBE, MOUNT/UNMOUNT, STAT, LIST and READ,
-and the VOLUME group provides QUERY. File contents and directories are read
+and the hosted VOLUME group provides QUERY, LABEL_GET and FORMAT. File contents and directories are read
 through `native/apfs_v2_reader.c`; hosted mounting also checks the source-owned
 checkpoint/spaceman summary in `native/apfs_native.c`.
 
@@ -50,14 +50,13 @@ and no host-write callbacks.
 - A disposable OVMF boot reading the actual kernel and initramfs via the
   packaged APFS.so has not been qualified. No firmware-compatible release
   designation follows from a successful test compile.
-- No writable mounting, recovery, formatting or filesystem-specific `.ko`
-  substitution is claimed. Historical workers and fixture APIs are
+- No general writable mounting, namespace mutation, recovery or filesystem-specific `.ko`
+  substitution is claimed. The separate hosted FORMAT callback requires an exclusive writable host and is qualified only for its tested layout. Historical workers and fixture APIs are
   non-installed, test-only source; no V1 runtime ABI is exported.
 
-### Pending exact-head result
+### Historical qualification checkpoint — 22 November 2026
 
 The 22 November duplicate-key repairs are committed to `main` in
 `530b711`, `2b85b7a`, `7756b3d` and `654865c`. Their GitHub Actions
-completion must be checked before marking this revision qualified or issuing
-a new release. No BOOT repository, physical disk, ESP or firmware settings
+completion was required before publishing that revision. Consult current repository workflows and immutable release records for subsequent qualification. No BOOT repository, physical disk, ESP or firmware settings
 were modified.
