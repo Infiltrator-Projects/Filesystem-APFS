@@ -1,6 +1,20 @@
-# APFS editable original Linux driver source
+# APFS native Common V2 design
 
-## Current source status
+## Production architecture
+
+The canonical installed provider is `APFS.so`. Its Common V2 descriptor is implemented in [the module](../../../module/apfs_v2_probe.c), with [native namespace decoding](../../../native/apfs_v2_reader.c). Hosted and freestanding profiles must be qualified separately; neither the existence of a callback nor a freestanding ELF establishes production BOOT handoff or general mutation support.
+
+## On-disk integrity
+
+Validate container geometry, NX checkpoint identity and Fletcher checksums, object map mappings and catalogue records before trusting offsets. B-tree keys and values must lie within the record area, not the footer. Distinct records must not overlap; ambiguous object mappings must be rejected. Preserve host I/O errors and bound all partition-relative reads. Unsupported feature combinations fail closed. The reader's supported tree shapes and object/extent representations are limited by the native implementation and its exact regression tests, not the complete APFS format.
+
+The hosted descriptor includes read-only namespace operations and a separate format operation; this does not imply arbitrary writable mounting, encryption, snapshots, multivolume or recovery support. See [README](../../../README.md) and [namespace regression tests](../../../tests/test_apfs_v2_namespace.c).
+
+## Distribution
+
+One portable amd64 DEB and one revision-pinned source-download native RUN, with GitHub-generated source archives. The installed module and PDF are the only filesystem-specific package files. No Linux VFS, separate kernel or EFI module or FUSE runtime substitutes for the V2 provider. The [release workflow](../../../.github/workflows/native-release.yml) defines the exact qualification.
+
+## Historical source provenance
 
 The original, actual out-of-tree Linux APFS implementation from
 [linux-apfs/linux-apfs-rw](https://github.com/linux-apfs/linux-apfs-rw)
@@ -13,20 +27,4 @@ This is working implementation code, **not** a discarded reference. The
 upstream version supplied its own `obj-m = apfs.o` Kbuild and DKMS support.
 Its existing copyright and licence notices are retained verbatim.
 
-## Deployment and qualification
-
-The APFS source already defines a Linux VFS driver with build-time
-read/write capability. Importing it is not evidence that its write path,
-feature variants, kernel ABI, crash handling, or installed-driver selection
-are qualified for Filesystems. The project currently delegates APFS support
-to the externally managed catalogue provider.
-
-Do not add `apfs` to `data/native-filesystems.tsv` or enable **Install
-native** until the exact Debian target kernel has a symbol-resolved module
-build, read-only mount and corruption tests, independent interoperability
-tests, and separately qualified writes. If the host has another APFS
-provider, fail safely instead of silently loading an unintended driver.
-
-EFI boot-source and Linux root qualification are **separate**, incomplete
-milestones. Original source ownership is preserved until actual code units
-have been independently replaced; moving files does not imply new authorship.
+The imported Linux driver is retained as historical source and evidence, not the current production deployment route. Its inherited copyright and licence notices remain intact. Importing it does not qualify write safety or any Common V2 capability.
