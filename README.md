@@ -29,8 +29,10 @@ The target installation is `/System/Filesystems/APFS.so` and `/System/Resources/
 - [Provider implementation](module/apfs_v2_probe.c)
 - [Native design or source provenance](native/filesystems/apfs/DESIGN.md)
 - [Migration and source history](MIGRATION_STATUS.md)
-- [Original-format reference source](docs/APFS.pages) and [PDF](docs/APFS.pdf)
+- [Original-format reference source](docs/APFS.pdfstreams) and [PDF](docs/APFS.pdf)
 - [Project philosophy](docs/PHILOSOPHY.md)
 - [Common ABI](https://github.com/Infiltrator-Projects/Libraries)
 
 The original-format reference and historical migration notes describe different evidence from the current production provider. When descriptions disagree, the current exported descriptor, implementation, executable tests and exact-revision release evidence take precedence.
+
+The [engineering reference](docs/APFS-TECHNICAL-REFERENCE.md) adds field-level original-format guidance. Earlier material is preserved in the PDF.

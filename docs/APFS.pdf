@@ -3,7 +3,7 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R 26 0 R 28 0 R] /Count 12 >>
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R 26 0 R 28 0 R 30 0 R 32 0 R 34 0 R 36 0 R 38 0 R 40 0 R 42 0 R 44 0 R 46 0 R 48 0 R 50 0 R 52 0 R 54 0 R 56 0 R 58 0 R 60 0 R] /Count 28 >>
 endobj
 3 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
@@ -18,6 +18,406 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
 endobj
 7 0 obj
+<< /Length 1009 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Scope and architecture) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Apple File System replaced HFS Plus as the default on modern Apple) Tj
+T* (platforms. It separates physical stores, a container sharing capacity among) Tj
+T* (volumes, volume-specific namespace trees, and transaction-scoped object) Tj
+T* (mappings. This reference describes the public on-disk model and unencrypted) Tj
+T* (single-store reading. Fusion, encryption, sealed system volumes, snapshots,) Tj
+T* (compression and write/recovery support require their own qualified profiles.) Tj
+T* (Do not treat a successful NXSB probe as evidence of all these capabilities.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 1 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 1210 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Object headers and integrity) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Ordinary objects begin with a 32-byte little-endian header: checksum at 0) Tj
+T* (\(64 bits\), object identifier at 8 \(64\), transaction ID at 16 \(64\), type at) Tj
+T* (24 \(32\), subtype at 28 \(32\). Storage class is encoded in the high type bits:) Tj
+T* (virtual 0, physical 0x40000000, ephemeral 0x80000000. Physical identifiers) Tj
+T* (name blocks directly; virtual identifiers require object-map lookup;) Tj
+T* (ephemeral objects are resolved through checkpoint mappings. Validate) Tj
+T* (Fletcher-64 over the required object bytes, excluding the checksum field,) Tj
+T* (with the APFS checkword convention \(not merely the raw running sums\). Reject) Tj
+T* (mismatched type, identity, size or checksum; some special objects omit) Tj
+T* (ordinary headers.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 2 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 11 0 R >>
+endobj
+11 0 obj
+<< /Length 1031 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Container superblock geometry) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The NX superblock starts with the object header; magic NXSB is at 32, block) Tj
+T* (size 36, block count 40, compatible features 48, read-only-compatible 56,) Tj
+T* (incompatible 64, UUID 72, next oid 88, next xid 96. Multi-byte fields are) Tj
+T* (little endian. Check block size, block count, multiplication overflow and) Tj
+T* (device length. The initial superblock is at container block zero; current) Tj
+T* (committed state is selected from checkpoints, not automatically from this) Tj
+T* (initial block. All physical block offsets are relative to the appropriate) Tj
+T* (store.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 3 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 13 0 R >>
+endobj
+13 0 obj
+<< /Length 1174 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Checkpoint descriptor and data areas) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(NX fields: descriptor blocks 104, data blocks 108, descriptor base 112, data) Tj
+T* (base 120, next descriptor/data indices 128/132, descriptor index/length) Tj
+T* (136/140, data index/length 144/148. Spaceman, container object map and) Tj
+T* (reaper identifiers are at 152/160/168; maximum filesystem count at 180;) Tj
+T* (volume oid array begins at 184. Descriptor area can be noncontiguous under a) Tj
+T* (flagged representation; reject unsupported geometry instead of masking and) Tj
+T* (assuming a contiguous range. A checkpoint map has flags at 32, count at 36,) Tj
+T* (40-byte entries from 40: type 0, subtype 4, size 8, pad 12, filesystem oid) Tj
+T* (16, object oid 24, physical address 32. LAST flag is bit 0.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 4 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 15 0 R >>
+endobj
+15 0 obj
+<< /Length 1077 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Checkpoint selection) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Enumerate candidate descriptor records within validated bounds. Associate) Tj
+T* (maps and NXSB objects by transaction identity and checkpoint sequence.) Tj
+T* (Require complete mappings for needed ephemeral objects, consistent geometry) Tj
+T* (and checksums. Select the newest internally coherent committed checkpoint) Tj
+T* (that the implementation can read, with explicit diagnostics for rejected) Tj
+T* (candidates. Do not assemble a synthetic checkpoint by mixing the newest) Tj
+T* (individually valid objects from different transactions. Recovery and) Tj
+T* (fallback to an older checkpoint must not modify media during inspection.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 5 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 17 0 R >>
+endobj
+17 0 obj
+<< /Length 1104 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Object maps and version lookup) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(OMAP physical object: flags 32, snapshot count 36, tree type 40, snapshot) Tj
+T* (tree type 44, tree oid 48, snapshot tree oid 56, most recent snapshot xid) Tj
+T* (64, pending revert minimum/maximum 72/80. Map key is oid at 0 and xid at 8,) Tj
+T* (both 64-bit. Value is flags 0, size 4 and physical block 8. Lookup the) Tj
+T* (requested oid at the greatest xid not exceeding the selected transaction.) Tj
+T* (Reject a deleted winning record \(flag 1\); do not fall back to an older live) Tj
+T* (record. Other flags include saved 2, encrypted 4, no-header 8 and) Tj
+T* (crypto-generation 16. Container and volume object maps have different) Tj
+T* (scopes.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 6 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 19 0 R >>
+endobj
+19 0 obj
+<< /Length 1102 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Volume superblocks) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Resolve a nonzero container volume oid through the container object map. A) Tj
+T* (volume object begins with APSB magic at 32, filesystem index 36, feature) Tj
+T* (masks 40/48/56, unmount time 64, reserve 72, quota 80 and allocated-block) Tj
+T* (count 88. Wrapped metadata crypto state follows, before root,) Tj
+T* (extent-reference and snapshot tree types and identifiers. Use the exact) Tj
+T* (revision-specific packed layout for those fields. The volume has its own) Tj
+T* (UUID, name, role, namespace root and object map. Container free capacity is) Tj
+T* (shared; do not equate the volume allocation count or quota with independent) Tj
+T* (partition geometry.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 7 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 21 0 R >>
+endobj
+21 0 obj
+<< /Length 1289 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (B-tree node layout) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The standard node has flags at 32 \(16 bits\), level 34, key count 36,) Tj
+T* (table-space offset/length 40/42, free-space 44/46, key-free-list 48/50 and) Tj
+T* (value-free-list 52/54; node data begins 56. Root flag 1, leaf 2, fixed KV 4,) Tj
+T* (hashed 8 and no-header 16. Fixed records use two 16-bit offsets \(4 bytes\);) Tj
+T* (variable records use key and value location pairs \(8 bytes\). Root footer is) Tj
+T* (40 bytes, including tree flags, node size, fixed key and value lengths,) Tj
+T* (maximum key/value lengths and 64-bit key/node counts. For the ordinary zero) Tj
+T* (table-offset profile, key base is 56+table length; value base is node end) Tj
+T* (minus root footer if root. Key offsets add to their base; value offsets) Tj
+T* (subtract from theirs. Invalid value offset is 0xffff. Validate nonoverlap,) Tj
+T* (ranges and record order.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 8 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 23 0 R >>
+endobj
+23 0 obj
+<< /Length 1216 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Tree navigation and key order) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(An internal entry identifies a child; resolve according to the tree's) Tj
+T* (physical, virtual or ephemeral storage class and the selected transaction.) Tj
+T* (Hashed nodes may carry child hashes, not just a plain oid. Validate level) Tj
+T* (descent and prevent cycles, bound key comparisons by record length, and use) Tj
+T* (the tree-specific comparator. APFS filesystem keys encode object ID in the) Tj
+T* (low 60 bits and record type in the high four bits of a little-endian 64-bit) Tj
+T* (word. Types include inode 3, xattr 4, sibling link 5, data-stream ID 6, file) Tj
+T* (extent 8, directory record 9 and directory statistics 10. Sorting the raw) Tj
+T* (bytes or treating all keys as one unsigned integer is not a substitute for) Tj
+T* (the defined comparator.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 9 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+24 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 25 0 R >>
+endobj
+25 0 obj
+<< /Length 1206 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Inodes and extended fields) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The ordinary inode value begins with parent ID 0, private ID 8,) Tj
+T* (create/mod/change/access timestamps 16/24/32/40, internal flags 48, child or) Tj
+T* (link count 56, protection class 60, write generation 64, BSD flags 68, owner) Tj
+T* (72, group 76, mode 80, padding 82 and uncompressed size 84. Extended fields) Tj
+T* (begin at 92. Xfield header is count \(16 bits\), used-data \(16\); each) Tj
+T* (descriptor has type, flags and 16-bit size, followed by aligned data.) Tj
+T* (Data-stream xfield type 8 contains size, allocated size, default crypto ID,) Tj
+T* (bytes written and bytes read, each 64 bits. The private ID can identify a) Tj
+T* (shared data stream and is not necessarily the inode object ID. Preserve) Tj
+T* (unknown fields when mutating.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 10 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+26 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 27 0 R >>
+endobj
+27 0 obj
+<< /Length 1143 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Directories and path lookup) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Directory record key combines parent ID and type with either 16-bit name) Tj
+T* (length or a 32-bit length-and-hash field, depending on the volume profile.) Tj
+T* (The latter uses low 10 bits for length and upper 22 for hash. Validate) Tj
+T* (termination and bounds; hashes are not unique names. Compare using the) Tj
+T* (applicable normalization and case-sensitivity rules, and verify the) Tj
+T* (directory value's target inode. Value contains file ID 0, date added 8,) Tj
+T* (flags 16, then optional xfields. Follow the namespace from root inode 2.) Tj
+T* (Sibling-link and sibling-map records carry hard-link metadata; deleting one) Tj
+T* (name does not automatically retire shared file data.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 11 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+28 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 29 0 R >>
+endobj
+29 0 obj
+<< /Length 1204 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (File extents and worked translation) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(File extent key adds a 64-bit logical byte offset to the record header. Its) Tj
+T* (24-byte value contains length-and-flags at 0, physical block number 8,) Tj
+T* (crypto ID 16; low 56 bits of length-and-flags are length in bytes and high 8) Tj
+T* (bits flags. Locate the containing logical extent for the data-stream ID, not) Tj
+T* (necessarily the inode number. With 4096-byte blocks, extent logical start) Tj
+T* (8192, physical start 100 and requested offset 9000, the relative physical) Tj
+T* (byte is 410408. A gap or supported hole reads as zero; never turn a hole) Tj
+T* (into a read from container block zero. Clip to stream size. Compression,) Tj
+T* (encrypted streams and sealed-volume extent trees require distinct decoding) Tj
+T* (paths.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 12 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+30 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 31 0 R >>
+endobj
+31 0 obj
+<< /Length 1161 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Space manager and sharing) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Spaceman tracks allocation in devices, chunks and allocation bitmaps;) Tj
+T* (checkpoint data maps locate ephemeral structures. Extent-reference records) Tj
+T* (track physical storage ownership, while file extent records map logical) Tj
+T* (stream offsets. Clones and snapshots can share blocks. Copy-on-write) Tj
+T* (relocation must update mappings and reference accounting without freeing) Tj
+T* (data still reachable by another stream or snapshot. Allocation reserves and) Tj
+T* (deferred free queues are not equivalent to immediately reusable capacity.) Tj
+T* (Derive free space through the appropriate committed allocator structures; a) Tj
+T* (scan of file extents is insufficient to establish safe allocation.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 13 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+32 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 33 0 R >>
+endobj
+33 0 obj
+<< /Length 1290 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Transactions, snapshots and repair) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(APFS publishes changes using copy-on-write metadata and checkpoint) Tj
+T* (transactions. A writer needs allocation reservation, ordered writes of new) Tj
+T* (data and metadata, object-map updates, checkpoint mapping and final) Tj
+T* (publication with required flushes. Old objects must remain reachable until) Tj
+T* (all retained snapshots and transactions no longer need them. Snapshot) Tj
+T* (metadata connects transaction, snapshot superblock and extent references.) Tj
+T* (Verify integrity hashes on sealed volumes under the correct trust model; an) Tj
+T* (ordinary object checksum is not a seal. Interrupted transactions must leave) Tj
+T* (at least one recoverable state. The full allocator, snapshot retirement,) Tj
+T* (encryption and transaction-recovery implementation is not specified by these) Tj
+T* (introductory algorithms.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 14 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+34 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 35 0 R >>
+endobj
+35 0 obj
+<< /Length 1227 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Primary sources and validation) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(Apple File System Reference:) Tj
+T* (https://developer.apple.com/support/downloads/Apple-File-System-Reference.pd) Tj
+T* (f . Independent readable layout cross-check:) Tj
+T* (https://github.com/sgan81/apfs-fuse/blob/master/ApfsLib/DiskStruct.h \(blob) Tj
+T* (aac7020ca409aae090989cc42502cdccff4e1c36\); BTree.cpp provides a constrained) Tj
+T* (reader example. Validate native-created images including multiple volumes,) Tj
+T* (object-map deletion, checkpoint wrap, fixed/variable nodes, sparse files,) Tj
+T* (normalization collisions and clones. Exercise corruption of checksums and) Tj
+T* (bounds. The historical manual follows; provider status and format feature) Tj
+T* (support are separate. This guide does not claim a complete independently) Tj
+T* (qualified APFS writer.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 15 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+36 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 37 0 R >>
+endobj
+37 0 obj
+<< /Length 638 >>
+stream
+0.05 0.13 0.22 rg 0 749 595 93 re f
+0.01 0.52 0.56 rg 50 747 116 5 re f
+1 1 1 rg BT /F2 11 Tf 50 807 Td (INFILTRATOR / FILESYSTEM ENGINEERING REFERENCE) Tj ET
+BT /F2 21 Tf 50 775 Td (APFS - technical reference) Tj ET
+0.05 0.13 0.22 rg BT /F2 14 Tf 50 715 Td (Historical reference appendix) Tj ET
+BT /F1 11 Tf 15 TL 50 685 Td
+(The earlier manual follows for provenance. Its provider and qualification) Tj
+T* (statements are historical; the new engineering chapters take precedence for) Tj
+T* (format interpretation.) Tj
+ET
+0.05 0.13 0.22 rg BT /F1 9 Tf 50 42 Td (Engineering chapter 16 | Original format, not provider qualification) Tj ET
+endstream
+endobj
+38 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 39 0 R >>
+endobj
+39 0 obj
 << /Length 2701 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -55,10 +455,10 @@ BT /F1 10.4 Tf 0.07 0.16 0.23 rg 1 0 0 1 51 213.0 Tm (5. Design rationale and li
 BT /F1 10.4 Tf 0.07 0.16 0.23 rg 1 0 0 1 51 190.0 Tm (6. InfiltratorOS integration boundary) Tj ET
 endstream
 endobj
-8 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
+40 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 41 0 R >>
 endobj
-9 0 obj
+41 0 obj
 << /Length 1911 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -81,10 +481,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 527.0 Tm (macOS volume cannot be ass
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 510.0 Tm (reference.) Tj ET
 endstream
 endobj
-10 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 11 0 R >>
+42 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 43 0 R >>
 endobj
-11 0 obj
+43 0 obj
 << /Length 1931 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -107,10 +507,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 527.0 Tm (checkpoint and understand 
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 510.0 Tm (file's physical extents.) Tj ET
 endstream
 endobj
-12 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 13 0 R >>
+44 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 45 0 R >>
 endobj
-13 0 obj
+45 0 obj
 << /Length 1809 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -132,10 +532,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 544.0 Tm (identity, hard links, exte
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 527.0 Tm (while macOS Finder presentation and POSIX calls are higher-level APIs.) Tj ET
 endstream
 endobj
-14 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 15 0 R >>
+46 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 47 0 R >>
 endobj
-15 0 obj
+47 0 obj
 << /Length 1970 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -158,10 +558,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 527.0 Tm (cryptographic metadata out
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 510.0 Tm (is not necessarily capable of safe writes or checkpoint repair.) Tj ET
 endstream
 endobj
-16 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 17 0 R >>
+48 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 49 0 R >>
 endobj
-17 0 obj
+49 0 obj
 << /Length 1697 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -182,10 +582,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 561.0 Tm (features, encryption modes
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 544.0 Tm (Incomplete feature support should lead to conservative read-only handling.) Tj ET
 endstream
 endobj
-18 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 19 0 R >>
+50 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 51 0 R >>
 endobj
-19 0 obj
+51 0 obj
 << /Length 1427 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -204,10 +604,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 595.0 Tm (authoritative on-disk refe
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 578.0 Tm (experiments and APFS-FUSE are secondary sources and must not replace that specification.) Tj ET
 endstream
 endobj
-20 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 21 0 R >>
+52 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 53 0 R >>
 endobj
-21 0 obj
+53 0 obj
 << /Length 2035 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -231,10 +631,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 458.0 Tm (implementation. The source
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 441.0 Tm (writes, boot, recovery or cross-platform compatibility.) Tj ET
 endstream
 endobj
-22 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 23 0 R >>
+54 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 55 0 R >>
 endobj
-23 0 obj
+55 0 obj
 << /Length 2677 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -263,10 +663,10 @@ BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 377 Tm (8. Treat encrypted metadata an
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 360.5 Tm (successful superblock parsing does not imply data decryption.) Tj ET
 endstream
 endobj
-24 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 25 0 R >>
+56 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 57 0 R >>
 endobj
-25 0 obj
+57 0 obj
 << /Length 2598 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -295,10 +695,10 @@ BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 377 Tm (8. For forensic or repair work
 BT /F1 10 Tf 0.09 0.16 0.24 rg 1 0 0 1 55 360.5 Tm (volume may omit shared metadata essential for interpretation.) Tj ET
 endstream
 endobj
-26 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 27 0 R >>
+58 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 59 0 R >>
 endobj
-27 0 obj
+59 0 obj
 << /Length 2727 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -329,10 +729,10 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 398 Tm (partition-relative host I/O.
 BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 383 Tm (establish that every format variant or host profile is qualified.) Tj ET
 endstream
 endobj
-28 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 29 0 R >>
+60 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 61 0 R >>
 endobj
-29 0 obj
+61 0 obj
 << /Length 3738 >>
 stream
 0.05 0.13 0.22 rg 0 749 595 93 re f
@@ -373,39 +773,71 @@ BT /F1 10.2 Tf 0.07 0.16 0.23 rg 1 0 0 1 50 248 Tm (qualification.) Tj ET
 endstream
 endobj
 xref
-0 30
+0 62
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
-0000000192 00000 n 
-0000000262 00000 n 
-0000000337 00000 n 
-0000000405 00000 n 
-0000000551 00000 n 
-0000003303 00000 n 
-0000003449 00000 n 
-0000005411 00000 n 
-0000005559 00000 n 
-0000007542 00000 n 
-0000007690 00000 n 
-0000009551 00000 n 
-0000009699 00000 n 
-0000011721 00000 n 
-0000011869 00000 n 
-0000013618 00000 n 
-0000013766 00000 n 
-0000015245 00000 n 
-0000015393 00000 n 
-0000017480 00000 n 
-0000017628 00000 n 
-0000020357 00000 n 
-0000020505 00000 n 
-0000023155 00000 n 
-0000023303 00000 n 
-0000026082 00000 n 
-0000026230 00000 n 
+0000000304 00000 n 
+0000000374 00000 n 
+0000000449 00000 n 
+0000000517 00000 n 
+0000000663 00000 n 
+0000001723 00000 n 
+0000001869 00000 n 
+0000003130 00000 n 
+0000003278 00000 n 
+0000004361 00000 n 
+0000004509 00000 n 
+0000005735 00000 n 
+0000005883 00000 n 
+0000007012 00000 n 
+0000007160 00000 n 
+0000008316 00000 n 
+0000008464 00000 n 
+0000009618 00000 n 
+0000009766 00000 n 
+0000011107 00000 n 
+0000011255 00000 n 
+0000012523 00000 n 
+0000012671 00000 n 
+0000013929 00000 n 
+0000014077 00000 n 
+0000015272 00000 n 
+0000015420 00000 n 
+0000016676 00000 n 
+0000016824 00000 n 
+0000018037 00000 n 
+0000018185 00000 n 
+0000019527 00000 n 
+0000019675 00000 n 
+0000020954 00000 n 
+0000021102 00000 n 
+0000021791 00000 n 
+0000021939 00000 n 
+0000024692 00000 n 
+0000024840 00000 n 
+0000026803 00000 n 
+0000026951 00000 n 
+0000028934 00000 n 
+0000029082 00000 n 
+0000030943 00000 n 
+0000031091 00000 n 
+0000033113 00000 n 
+0000033261 00000 n 
+0000035010 00000 n 
+0000035158 00000 n 
+0000036637 00000 n 
+0000036785 00000 n 
+0000038872 00000 n 
+0000039020 00000 n 
+0000041749 00000 n 
+0000041897 00000 n 
+0000044547 00000 n 
+0000044695 00000 n 
+0000047474 00000 n 
+0000047622 00000 n 
 trailer
-<< /Size 30 /Root 1 0 R >>
+<< /Size 62 /Root 1 0 R >>
 startxref
-30020
+51412
 %%EOF
