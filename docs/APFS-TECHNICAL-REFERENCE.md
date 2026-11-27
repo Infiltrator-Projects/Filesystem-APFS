@@ -4,6 +4,8 @@
 
 Apple File System replaced HFS Plus as the default on modern Apple platforms. It separates physical stores, a container sharing capacity among volumes, volume-specific namespace trees, and transaction-scoped object mappings. This reference describes the public on-disk model and unencrypted single-store reading. Fusion, encryption, sealed system volumes, snapshots, compression and write/recovery support require their own qualified profiles. Do not treat a successful NXSB probe as evidence of all these capabilities.
 
+Apple announced APFS in 2016, deployed it in 2017, and published its File System Reference in 2018. Its flash-oriented checkpoint, encryption and snapshot design is an architectural replacement for HFS Plus.
+
 ## Object headers and integrity
 
 Ordinary objects begin with a 32-byte little-endian header: checksum at 0 (64 bits), object identifier at 8 (64), transaction ID at 16 (64), type at 24 (32), subtype at 28 (32). Storage class is encoded in the high type bits: virtual 0, physical 0x40000000, ephemeral 0x80000000. Physical identifiers name blocks directly; virtual identifiers require object-map lookup; ephemeral objects are resolved through checkpoint mappings. Validate Fletcher-64 over the required object bytes, excluding the checksum field, with the APFS checkword convention (not merely the raw running sums). Reject mismatched type, identity, size or checksum; some special objects omit ordinary headers.
@@ -55,6 +57,14 @@ Spaceman tracks allocation in devices, chunks and allocation bitmaps; checkpoint
 ## Transactions, snapshots and repair
 
 APFS publishes changes using copy-on-write metadata and checkpoint transactions. A writer needs allocation reservation, ordered writes of new data and metadata, object-map updates, checkpoint mapping and final publication with required flushes. Old objects must remain reachable until all retained snapshots and transactions no longer need them. Snapshot metadata connects transaction, snapshot superblock and extent references. Verify integrity hashes on sealed volumes under the correct trust model; an ordinary object checksum is not a seal. Interrupted transactions must leave at least one recoverable state. The full allocator, snapshot retirement, encryption and transaction-recovery implementation is not specified by these introductory algorithms.
+
+## Implementation and qualification boundary
+
+At source revision a05422370945 the hosted descriptor included read, query, label and format; the freestanding carrier's documented probe did not establish the full hosted namespace. The reader rejected duplicate object-map keys and values overlapping a B-tree root footer; tests included different transfer sizes. Encrypted media, arbitrary namespace mutation and complex checkpoint/snapshot combinations required separate qualification.
+
+Common V2 is the independent provider interface: https://github.com/Infiltrator-Projects/Libraries/blob/main/docs/FILESYSTEM_COMMON_ABI_V2.md . Negotiate real operation masks and media profiles. Use bounded host I/O, exclusive unmounted ownership and durable flush for mutation; distinguish unsupported, corrupt, I/O and stale-handle results. Test Media and Defragmenter use the same engine. Hosted, freestanding, BOOT, kernel, recovery and package qualification are independent. Current capability and release status belongs to the repository README and exact-source qualification records; historical evidence is not a current status claim.
+
+Historical source or test reference: https://github.com/Infiltrator-Projects/Filesystem-APFS/tree/a05422370945 .
 
 ## Primary sources and validation
 
