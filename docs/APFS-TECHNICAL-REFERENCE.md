@@ -2,9 +2,9 @@
 
 ## Scope and architecture
 
-Apple File System replaced HFS Plus as the default on modern Apple platforms. It separates physical stores, a container sharing capacity among volumes, volume-specific namespace trees, and transaction-scoped object mappings. This reference describes the public on-disk model and unencrypted single-store reading. Fusion, encryption, sealed system volumes, snapshots, compression and write/recovery support require their own qualified profiles. Do not treat a successful NXSB probe as evidence of all these capabilities.
+Apple announced APFS in 2016, deployed it in 2017 and published its File System Reference in 2018. Apple File System replaced HFS Plus as the default on modern Apple platforms. It separates physical stores, a container sharing capacity among volumes, volume-specific namespace trees, and transaction-scoped object mappings. This reference describes the public on-disk model and unencrypted single-store reading. Fusion, encryption, sealed system volumes, snapshots, compression and write/recovery support require their own qualified profiles. Do not treat a successful NXSB probe as evidence of all these capabilities.
 
-Apple announced APFS in 2016, deployed it in 2017, and published its File System Reference in 2018. Its flash-oriented checkpoint, encryption and snapshot design is an architectural replacement for HFS Plus.
+Its flash-oriented checkpoint design differs fundamentally from HFS Plus.
 
 ## Object headers and integrity
 
@@ -68,4 +68,4 @@ Historical source or test reference: https://github.com/Infiltrator-Projects/Fil
 
 ## Primary sources and validation
 
-Apple File System Reference: https://developer.apple.com/support/downloads/Apple-File-System-Reference.pdf . Independent readable layout cross-check: https://github.com/sgan81/apfs-fuse/blob/master/ApfsLib/DiskStruct.h (blob aac7020ca409aae090989cc42502cdccff4e1c36); BTree.cpp provides a constrained reader example. Validate native-created images including multiple volumes, object-map deletion, checkpoint wrap, fixed/variable nodes, sparse files, normalization collisions and clones. Exercise corruption of checksums and bounds. The historical manual follows; provider status and format feature support are separate. This guide does not claim a complete independently qualified APFS writer.
+Apple File System Reference: https://developer.apple.com/support/downloads/Apple-File-System-Reference.pdf . Independent readable layout cross-check: https://github.com/sgan81/apfs-fuse/blob/master/ApfsLib/DiskStruct.h (blob aac7020ca409aae090989cc42502cdccff4e1c36); BTree.cpp provides a constrained reader example. Validate native-created images including multiple volumes, object-map deletion, checkpoint wrap, fixed/variable nodes, sparse files, normalization collisions and clones. Exercise corruption of checksums and bounds. Historical provider status is identified in Implementation and qualification boundary, separately from format feature support. This guide does not claim a complete independently qualified APFS writer.

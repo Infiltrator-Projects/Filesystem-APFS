@@ -25,16 +25,15 @@ BT /F2 22 Tf 43 784 Td (APFS - technical reference) Tj ET
 1 1 1 rg BT /F2 10 Tf 43 811 Td (INFILTRATOR / FILESYSTEM ENGINEERING) Tj ET
 BT /F2 22 Tf 43 784 Td (APFS - technical reference) Tj ET
 0.08 0.14 0.20 rg BT /F2 15 Tf 43 736 Td (1. Scope and architecture) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 706 Td (Apple File System replaced HFS Plus as the default on modern Apple platforms. It) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 692 Td (separates physical stores, a container sharing capacity among volumes,) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 678 Td (volume-specific namespace trees, and transaction-scoped object mappings. This) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 664 Td (reference describes the public on-disk model and unencrypted single-store reading.) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (Fusion, encryption, sealed system volumes, snapshots, compression and) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (write/recovery support require their own qualified profiles. Do not treat a) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (successful NXSB probe as evidence of all these capabilities.) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 598 Td (Apple announced APFS in 2016, deployed it in 2017, and published its File System) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 584 Td (Reference in 2018. Its flash-oriented checkpoint, encryption and snapshot design is) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 570 Td (an architectural replacement for HFS Plus.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 706 Td (Apple announced APFS in 2016, deployed it in 2017 and published its File System) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 692 Td (Reference in 2018. Apple File System replaced HFS Plus as the default on modern) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 678 Td (Apple platforms. It separates physical stores, a container sharing capacity) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 664 Td (among volumes, volume-specific namespace trees, and transaction-scoped object) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (mappings. This reference describes the public on-disk model and unencrypted) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (single-store reading. Fusion, encryption, sealed system volumes, snapshots,) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (compression and write/recovery support require their own qualified profiles. Do) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 608 Td (not treat a successful NXSB probe as evidence of all these capabilities.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 584 Td (Its flash-oriented checkpoint design differs fundamentally from HFS Plus.) Tj ET
 0.2 0.3 0.4 rg BT /F1 9 Tf 43 32 Td (Historical development and engineering reference | 2) Tj ET
 
 %%Page
@@ -274,10 +273,11 @@ BT /F2 22 Tf 43 784 Td (APFS - technical reference) Tj ET
 0.08 0.14 0.20 rg BT /F3 10 Tf 43 692 Td (https://developer.apple.com/support/downloads/Apple-File-System-Reference.pdf .) Tj ET
 0.08 0.14 0.20 rg BT /F3 10 Tf 43 678 Td (Independent readable layout cross-check:) Tj ET
 0.08 0.14 0.20 rg BT /F3 10 Tf 43 664 Td (https://github.com/sgan81/apfs-fuse/blob/master/ApfsLib/DiskStruct.h \(blob) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (aac7020ca409aae090989cc42502cdccff4e1c36\); BTree.cpp provides a constrained reader) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (example. Validate native-created images including multiple volumes, object-map) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (deletion, checkpoint wrap, fixed/variable nodes, sparse files, normalization) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 608 Td (collisions and clones. Exercise corruption of checksums and bounds. The historical) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 594 Td (manual follows; provider status and format feature support are separate. This guide) Tj ET
-0.08 0.14 0.20 rg BT /F3 10 Tf 43 580 Td (does not claim a complete independently qualified APFS writer.) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 650 Td (aac7020ca409aae090989cc42502cdccff4e1c36\); BTree.cpp provides a constrained) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 636 Td (reader example. Validate native-created images including multiple volumes,) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 622 Td (object-map deletion, checkpoint wrap, fixed/variable nodes, sparse files,) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 608 Td (normalization collisions and clones. Exercise corruption of checksums and) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 594 Td (bounds. Historical provider status is identified in Implementation and) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 580 Td (qualification boundary, separately from format feature support. This guide does) Tj ET
+0.08 0.14 0.20 rg BT /F3 10 Tf 43 566 Td (not claim a complete independently qualified APFS writer.) Tj ET
 0.2 0.3 0.4 rg BT /F1 9 Tf 43 32 Td (Historical development and engineering reference | 17) Tj ET
